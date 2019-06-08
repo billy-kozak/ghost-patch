@@ -26,6 +26,9 @@ LD := gcc
 CFLAGS += -Wall -std=gnu99
 LDFLAGS += -Wall
 
+CFLAGS += -fvisibility=hidden
+LDFLAGS += -fvisibility=hidden
+
 PROJECT := py-trace
 
 NO_DEPS_TARGETS += clean directories dir_clean
@@ -38,7 +41,7 @@ ASM_GEN_DIR := asm_gen
 
 SRC_TREE += src
 
-INC_DIRS += src/c/common
+INC_DIRS += src/c/inc
 SRC_DIRS += src/c
 ###############################################################################
 #                                 BUILD FILES                                 #
@@ -99,7 +102,7 @@ $(ASM_GEN): $(ASM_GEN_DIR)/%.s : %.c | $(ASM_GEN_DIR)/.dir_dummy
 	$(CC) $(CFLAGS) -S $< -o $@
 
 $(BINARY): $(OBJ_FILES) | $(EXE_DIR)/.dir_dummy
-	$(LD) $(LDFLAGS) -fPIC -pie -fvisibility=hidden $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) -fPIC -pie  $^ $(LIBS) -o $@
 
 clean:
 	rm -f $(CLEAN_FILES)

@@ -1,7 +1,7 @@
 /******************************************************************************
 * Copyright (C) 2019  Billy Kozak                                             *
 *                                                                             *
-* This file is part of the py-src program                                     *
+* This file is part of the py-trace program                                   *
 *                                                                             *
 * This program is free software: you can redistribute it and/or modify        *
 * it under the terms of the GNU Lesser General Public License as published by *
@@ -16,14 +16,11 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef MISC_MACROS_H
+#define MISC_MACROS_H
 /******************************************************************************
-*                                  INCLUDES                                   *
+*                                   MACROS                                    *
 ******************************************************************************/
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-int main(int argc, char **argv)
-{
-	return 0;
-}
+#define NUM_ARGS(type, ...)  (sizeof((type[]){__VA_ARGS__})/sizeof(type))
 /*****************************************************************************/
+#endif /* MISC_MACROS_H */
