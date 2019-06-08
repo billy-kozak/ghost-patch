@@ -22,6 +22,8 @@
 ******************************************************************************/
 #include "shared.h"
 
+#include "trace.h"
+
 #include <dlfcn.h>
 #include <string.h>
 #include <stdio.h>
@@ -36,7 +38,9 @@ static bool am_py_trace(const char *progname);
 ******************************************************************************/
 static void do_special_setup(void)
 {
-	printf("Special Setup\n");
+	if(start_trace()) {
+		perror("Unable to start trace");
+	}
 }
 /*****************************************************************************/
 static bool am_py_trace(const char *progname)

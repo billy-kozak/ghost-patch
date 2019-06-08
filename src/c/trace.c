@@ -16,54 +16,76 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#define _GNU_SOURCE
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "str-utl.h"
+#include "trace.h"
 
-#include <unistd.h>
-#include <stdlib.h>
+#include <stdint.h>
+#include <sched.h>
+#include <sys/mman.h>
 #include <stdio.h>
+#include <signal.h>
+#include <errno.h>
+#include <unistd.h>
+/******************************************************************************
+*                                  CONSTANTS                                  *
+******************************************************************************/
+static const size_t MONITOR_THREAD_TARGET_STACK_SIZE = 8 * 1024 * 1024;
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-static void setup_ld_preload(void);
+static int monitor_thread(void* arg);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
-static void setup_ld_preload(void)
+static size_t thread_stack_size(void)
 {
-	char *executable = this_executable();
-	char *current = getenv("LD_PRELOAD");
-	char *new = NULL;
+	long page_size = sysconf(_SC_PAGE_SIZE);
 
-	if(current == NULL) {
-		new = copy_string(executable);
+	if(MONITOR_THREAD_TARGET_STACK_SIZE % page_size) {
+		return
+			page_size *
+			((MONITOR_THREAD_TARGET_STACK_SIZE / page_size) + 1);
 	} else {
-		new = concatenate_strings(executable, ":", current);
+		return MONITOR_THREAD_TARGET_STACK_SIZE;
 	}
-
-	setenv("LD_PRELOAD", new, 1);
-
-	free(executable);
-	free(new);
+}
+/*****************************************************************************/
+static int monitor_thread(void* arg)
+{
+	printf("Monitor thread online\n");
+	return 0;
 }
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-int main(int argc, char **argv)
+int start_trace(void)
 {
-	if(argc <= 1) {
-		return 0;
+	size_t stack_size = thread_stack_size();
+	uint8_t* stack = mmap(
+		NULL,
+		stack_size,
+		PROT_READ | PROT_WRITE,
+		MAP_STACK | MAP_PRIVATE | MAP_ANONYMOUS,
+		-1,
+		0
+	);
+	uint8_t * stack_end = stack + stack_size;
+
+	if(stack == MAP_FAILED) {
+		goto fail_0;
 	}
 
-	setup_ld_preload();
-
-	if(execvp(argv[1], argv + 1)) {
-		perror(NULL);
+	if(clone(monitor_thread, stack_end, CLONE_VM | SIGCHLD, NULL) == -1) {
+		goto fail_1;
 	}
 
+	return 0;
+fail_1:
+	munmap(stack, stack_size);
+fail_0:
 	return -1;
 }
 /*****************************************************************************/
