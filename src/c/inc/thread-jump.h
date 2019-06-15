@@ -16,35 +16,73 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#define _GNU_SOURCE
+#ifndef THREAD_JUMP_H
+#define THREAD_JUMP_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "trace.h"
-
-#include "fake-pthread.h"
+#include "platform.h"
 
 #include <stdint.h>
-#include <stdio.h>
-#include <errno.h>
+#include <sys/syscall.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <asm/prctl.h>
+#include <sys/prctl.h>
+/******************************************************************************
+*                                    TYPES                                    *
+******************************************************************************/
+struct thread_jump {
+	volatile uint64_t flag;
+
+	void *ret_addr;
+	void *rsp;
+	void *rbp;
+	uint64_t rbx;
+	uint64_t r12;
+	uint64_t r13;
+	uint64_t r14;
+	uint64_t r15;
+	unsigned long fs;
+	unsigned long gs;
+};
+/******************************************************************************
+*                                   DEFINES                                   *
+******************************************************************************/
+#define TJ_BUFFER_INITIAL {0}
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-static int monitor_thread(void* arg);
+int __tj_set(struct thread_jump *tj);
+void __tj_jump(struct thread_jump *tj);
+int arch_prctl(int code, ...);
 /******************************************************************************
-*                              STATIC FUNCTIONS                               *
+*                              INLINE FUNCTIONS                               *
 ******************************************************************************/
-static int monitor_thread(void* arg)
+static inline void tj_spinwait(struct thread_jump *tj)
 {
-	printf("Monitor thread online\n");
-	return 0;
-}
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-int start_trace(void)
-{
-	return fake_pthread(monitor_thread, NULL);
+	while(tj->flag == 0);
 }
 /*****************************************************************************/
+static inline ALWAYS_INLINE int tj_set(struct thread_jump *tj)
+{
+	arch_prctl(ARCH_GET_FS, &tj->fs);
+	arch_prctl(ARCH_GET_GS, &tj->gs);
+	return __tj_set(tj);
+}
+/*****************************************************************************/
+static inline ALWAYS_INLINE void tj_jump(struct thread_jump *tj)
+{
+	arch_prctl(ARCH_SET_FS, tj->fs);
+	arch_prctl(ARCH_SET_GS, tj->gs);
+	__tj_jump(tj);
+}
+/*****************************************************************************/
+static inline ALWAYS_INLINE void tj_set_and_exit(struct thread_jump *tj)
+{
+	if(tj_set(tj) == 0) {
+		syscall(SYS_exit, 0);
+	}
+}
+/*****************************************************************************/
+#endif /* THREAD_JUMP_H */

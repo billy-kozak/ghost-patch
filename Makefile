@@ -42,18 +42,25 @@ ASM_GEN_DIR := asm_gen
 SRC_TREE += src
 
 INC_DIRS += src/c/inc
-SRC_DIRS += src/c
+CSRC_DIRS += src/c
+ASM_DIRS += src/asm
 ###############################################################################
 #                                 BUILD FILES                                 #
 ###############################################################################
-C_PATHS   += $(foreach dir, $(SRC_DIRS),$(wildcard $(dir)/*.c))
+C_PATHS   += $(foreach dir, $(CSRC_DIRS),$(wildcard $(dir)/*.c))
 
 C_FILES   += $(foreach f, $(C_PATHS),$(notdir $(f)))
 OBJ_FILES += $(foreach f,$(C_FILES),$(BUILD_DIR)/$(patsubst %.c,%.o,$(f)))
 DEP_FILES += $(foreach f,$(C_FILES),$(BUILD_DIR)/$(patsubst %.c,%.d,$(f)))
 ASM_GEN   += $(foreach f,$(C_FILES),$(ASM_GEN_DIR)/$(patsubst %.c,%.s,$(f)))
 
-LIBS = -ldl
+ASM_PATHS += $(foreach dir, $(ASM_DIRS),$(wildcard $(dir)/*.S))
+
+ASM_FILES += $(foreach f, $(ASM_PATHS),$(notdir $(f)))
+OBJ_FILES += $(foreach f,$(ASM_FILES),$(BUILD_DIR)/$(patsubst %.S,%.o,$(f)))
+DEP_FILES += $(foreach f,$(ASM_FILES),$(BUILD_DIR)/$(patsubst %.S,%.d,$(f)))
+
+LIBS = -ldl -lpthread
 
 BINARY := $(EXE_DIR)/$(PROJECT)
 
@@ -61,9 +68,10 @@ INCLUDES += $(foreach f,$(INC_DIRS),-I$(f))
 
 CFLAGS += $(INCLUDES)
 
-vpath %.c $(SRC_DIRS)
+vpath %.c $(CSRC_DIRS)
+vpath %.S $(ASM_DIRS)
 
-C_DIRS += $(SRC_DIRS) $(INC_DIRS)
+C_DIRS += $(CSRC_DIRS) $(INC_DIRS)
 
 CLEAN_FILES += $(foreach dir,$(C_DIRS),$(wildcard $(dir)/*~))
 CLEAN_FILES += $(foreach dir,$(C_DIRS),$(wildcard $(dir)/*\#))
@@ -91,6 +99,12 @@ directories: $(BUILD_DIR)/.dir_dummy $(EXE_DIR)/.dir_dummy
 %.dir_dummy:
 	mkdir -p $(dir $(@))
 	@touch $(@)
+
+$(BUILD_DIR)/%.d: %.S | $(BUILD_DIR)/.dir_dummy
+	$(CC) -MF $@ -M -MT "$(patsubst %.d,%.o,$@) $@" $<
+
+$(BUILD_DIR)/%.o: %.S | $(BUILD_DIR)/.dir_dummy
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.d: %.c | $(BUILD_DIR)/.dir_dummy
 	$(CC) $(CFLAGS) -MF $@ -M -MT "$(patsubst %.d,%.o,$@) $@" $<

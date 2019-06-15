@@ -16,35 +16,11 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#define _GNU_SOURCE
+#ifndef PLATFORM_H
+#define PLATFORM_H
 /******************************************************************************
-*                                  INCLUDES                                   *
+*                                   DEFINES                                   *
 ******************************************************************************/
-#include "trace.h"
-
-#include "fake-pthread.h"
-
-#include <stdint.h>
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-static int monitor_thread(void* arg);
-/******************************************************************************
-*                              STATIC FUNCTIONS                               *
-******************************************************************************/
-static int monitor_thread(void* arg)
-{
-	printf("Monitor thread online\n");
-	return 0;
-}
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-int start_trace(void)
-{
-	return fake_pthread(monitor_thread, NULL);
-}
+#define ALWAYS_INLINE __attribute__((always_inline))
 /*****************************************************************************/
+#endif /* PLATFORM_H */

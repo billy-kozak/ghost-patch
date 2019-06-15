@@ -16,35 +16,51 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#define _GNU_SOURCE
 /******************************************************************************
-*                                  INCLUDES                                   *
+*                                TEXT SECTION                                 *
 ******************************************************************************/
-#include "trace.h"
+.section .text
+	.global __tj_set
+	.global __tj_jump
+/******************************************************************************
+*                            FUNCTION DEFINITIONS                             *
+******************************************************************************/
+__tj_set:
+	// save the return address
+	mov (%rsp), %rax
+	mov %rax,  (8)(%rdi)
 
-#include "fake-pthread.h"
+	//save the stack pointer, and other registers
+	mov %rsp, (16)(%rdi)
+	mov %rbp, (24)(%rdi)
+	mov %rbx, (32)(%rdi)
+	mov %r12, (40)(%rdi)
+	mov %r13, (48)(%rdi)
+	mov %r14, (56)(%rdi)
+	mov %r15, (64)(%rdi)
 
-#include <stdint.h>
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-static int monitor_thread(void* arg);
-/******************************************************************************
-*                              STATIC FUNCTIONS                               *
-******************************************************************************/
-static int monitor_thread(void* arg)
-{
-	printf("Monitor thread online\n");
-	return 0;
-}
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-int start_trace(void)
-{
-	return fake_pthread(monitor_thread, NULL);
-}
+	// Raise the flag to indicate that the set is now complete
+	mfence
+	movq $1, (%rdi)
+
+	mov $0,   %rax
+	ret
+/*****************************************************************************/
+__tj_jump:
+
+	// Restore registers
+	mov (16)(%rdi), %rsp
+	mov (24)(%rdi), %rbp
+	mov (32)(%rdi), %rbx
+	mov (40)(%rdi), %r12
+	mov (48)(%rdi), %r13
+	mov (56)(%rdi), %r14
+	mov (64)(%rdi), %r15
+
+	//Restore the return address
+	mov (8)(%rdi), %rax
+	mov %rax,      (%rsp)
+
+	mov $1,   %rax
+	ret
 /*****************************************************************************/
