@@ -28,11 +28,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <setjmp.h>
 /******************************************************************************
 *                                   GLOBALS                                   *
 ******************************************************************************/
-static int (*real_main)(int, char **, char **);
 static bool am_py_trace(const char *progname);
+static sigjmp_buf jump_buffer;
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -54,7 +55,8 @@ static int fake_main(int argc, char **argv, char **envp)
 		do_special_setup();
 	}
 
-	return real_main(argc, argv, envp);
+	siglongjmp(jump_buffer, 1);
+	return 0;
 }
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
@@ -78,8 +80,28 @@ EXPORT int __libc_start_main(
 			void (* stack_end)
 		) = dlsym(RTLD_NEXT, "__libc_start_main");
 
-	real_main = main;
+	if(sigsetjmp(jump_buffer, 0) == 0) {
+		return real(
+			fake_main,
+			argc,
+			ubp_av,
+			init,
+			fini,
+			rtld_fini,
+			stack_end
+		);
+	} else {
+		return real(
+			main,
+			argc,
+			ubp_av,
+			init,
+			fini,
+			rtld_fini,
+			stack_end
+		);
+	}
 
-	return real(fake_main, argc, ubp_av, init, fini, rtld_fini, stack_end);
+
 }
 /*****************************************************************************/
