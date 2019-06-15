@@ -53,7 +53,7 @@ static int monitor_thread(void* arg)
 {
 	child_pid = getpid();
 
-	tj_swap(&tj_thread, &tj_main, 0);
+	tj_swap(&tj_thread, &tj_main, 1);
 
 	syscall_exit(monitor());
 
@@ -79,7 +79,7 @@ int start_trace(void)
 		return 1;
 	}
 
-	tj_swap(&tj_main, &tj_thread, 0);
+	tj_swap(&tj_main, &tj_thread, 1);
 	return 0;
 }
 /*****************************************************************************/
