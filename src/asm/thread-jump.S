@@ -20,12 +20,16 @@
 *                                TEXT SECTION                                 *
 ******************************************************************************/
 .section .text
-	.global __tj_set
+	.global __tj_swap
 	.global __tj_jump
 /******************************************************************************
 *                            FUNCTION DEFINITIONS                             *
 ******************************************************************************/
-__tj_set:
+exit:
+	mov $60, %rax
+	xor %rdi, %rdi
+	syscall
+__tj_swap:
 	// save the return address
 	mov (%rsp), %rax
 	mov %rax,  (8)(%rdi)
@@ -43,24 +47,28 @@ __tj_set:
 	mfence
 	movq $1, (%rdi)
 
-	mov $0,   %rax
-	ret
-/*****************************************************************************/
+	cmp $0, %rsi
+	je exit
+
 __tj_jump:
 
+	mov (%rsi), %rax
+	cmp $0, %rax
+	je __tj_jump
+
 	// Restore registers
-	mov (16)(%rdi), %rsp
-	mov (24)(%rdi), %rbp
-	mov (32)(%rdi), %rbx
-	mov (40)(%rdi), %r12
-	mov (48)(%rdi), %r13
-	mov (56)(%rdi), %r14
-	mov (64)(%rdi), %r15
+	mov (16)(%rsi), %rsp
+	mov (24)(%rsi), %rbp
+	mov (32)(%rsi), %rbx
+	mov (40)(%rsi), %r12
+	mov (48)(%rsi), %r13
+	mov (56)(%rsi), %r14
+	mov (64)(%rsi), %r15
 
 	//Restore the return address
-	mov (8)(%rdi), %rax
+	mov (8)(%rsi), %rax
 	mov %rax,      (%rsp)
 
-	mov $1,   %rax
+	mov %rdx, %rax
 	ret
 /*****************************************************************************/

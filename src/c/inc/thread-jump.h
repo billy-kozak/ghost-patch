@@ -53,8 +53,8 @@ struct thread_jump {
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-int __tj_set(struct thread_jump *tj);
-void __tj_jump(struct thread_jump *tj);
+int __tj_swap(struct thread_jump *src, struct thread_jump *dst, int set_fs);
+int __tj_jump(struct thread_jump *src, struct thread_jump *dst, int set_fs);
 int arch_prctl(int code, ...);
 /******************************************************************************
 *                              INLINE FUNCTIONS                               *
@@ -64,35 +64,31 @@ static inline void tj_spinwait(struct thread_jump *tj)
 	while(tj->flag == 0);
 }
 /*****************************************************************************/
-static inline ALWAYS_INLINE int tj_set(struct thread_jump *tj)
-{
-	arch_prctl(ARCH_GET_FS, &tj->fs);
-	arch_prctl(ARCH_GET_GS, &tj->gs);
-	return __tj_set(tj);
-}
-/*****************************************************************************/
 static inline ALWAYS_INLINE void tj_jump(struct thread_jump *tj, int set_fs)
 {
-	if(set_fs) {
-		arch_prctl(ARCH_SET_FS, tj->fs);
-		arch_prctl(ARCH_SET_GS, tj->gs);
-	}
-	__tj_jump(tj);
+	__tj_jump(NULL, tj, set_fs);
 }
 /*****************************************************************************/
 static inline ALWAYS_INLINE void tj_set_and_exit(struct thread_jump *tj)
 {
-	if(tj_set(tj) == 0) {
-		syscall_exit(0);
+	arch_prctl(ARCH_GET_FS, &tj->fs);
+	arch_prctl(ARCH_GET_GS, &tj->gs);
+
+	if(__tj_swap(tj, NULL, 0)) {
+		arch_prctl(ARCH_SET_FS, tj->fs);
+		arch_prctl(ARCH_SET_GS, tj->gs);
 	}
 }
 /*****************************************************************************/
 static inline ALWAYS_INLINE void tj_swap(
 	struct thread_jump *src, struct thread_jump *dst, int set_fs
 ) {
-	if(tj_set(src) == 0) {
-		tj_spinwait(dst);
-		tj_jump(dst, set_fs);
+	arch_prctl(ARCH_GET_FS, &src->fs);
+	arch_prctl(ARCH_GET_GS, &src->gs);
+
+	if(__tj_swap(src, dst, set_fs)) {
+		arch_prctl(ARCH_SET_FS, src->fs);
+		arch_prctl(ARCH_SET_GS, src->gs);
 	}
 }
 /*****************************************************************************/
