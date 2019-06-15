@@ -124,7 +124,7 @@ int fake_pthread(int(*target)(void* arg), void *arg)
 		goto exit;
 	}
 
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 	if(pthread_create(&thread, &attr, pthread_target, (void*)&t_arg)) {
 		ret = 1;
