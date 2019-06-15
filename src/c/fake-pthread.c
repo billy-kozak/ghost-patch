@@ -25,7 +25,6 @@
 #include "thread-jump.h"
 
 #include <pthread.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <sys/mman.h>
@@ -64,7 +63,7 @@ static int clone_target(void *arg)
 	tj = (struct thread_jump *)&(aptr->tj);
 
 	tj_spinwait(tj);
-	tj_jump(tj);
+	tj_jump(tj, 1);
 
 	return 0;
 }

@@ -22,9 +22,9 @@
 *                                  INCLUDES                                   *
 ******************************************************************************/
 #include "platform.h"
+#include "syscall-utl.h"
 
 #include <stdint.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <asm/prctl.h>
@@ -71,17 +71,28 @@ static inline ALWAYS_INLINE int tj_set(struct thread_jump *tj)
 	return __tj_set(tj);
 }
 /*****************************************************************************/
-static inline ALWAYS_INLINE void tj_jump(struct thread_jump *tj)
+static inline ALWAYS_INLINE void tj_jump(struct thread_jump *tj, int set_fs)
 {
-	arch_prctl(ARCH_SET_FS, tj->fs);
-	arch_prctl(ARCH_SET_GS, tj->gs);
+	if(set_fs) {
+		arch_prctl(ARCH_SET_FS, tj->fs);
+		arch_prctl(ARCH_SET_GS, tj->gs);
+	}
 	__tj_jump(tj);
 }
 /*****************************************************************************/
 static inline ALWAYS_INLINE void tj_set_and_exit(struct thread_jump *tj)
 {
 	if(tj_set(tj) == 0) {
-		syscall(SYS_exit, 0);
+		syscall_exit(0);
+	}
+}
+/*****************************************************************************/
+static inline ALWAYS_INLINE void tj_swap(
+	struct thread_jump *src, struct thread_jump *dst, int set_fs
+) {
+	if(tj_set(src) == 0) {
+		tj_spinwait(dst);
+		tj_jump(dst, set_fs);
 	}
 }
 /*****************************************************************************/

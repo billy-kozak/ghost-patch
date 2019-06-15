@@ -20,66 +20,16 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "trace.h"
-
-#include "fake-pthread.h"
-#include "thread-jump.h"
 #include "syscall-utl.h"
 
-#include <stdint.h>
-#include <stdio.h>
-#include <errno.h>
+#include <sys/syscall.h>
 #include <unistd.h>
-#include <sys/wait.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 /******************************************************************************
-*                                    DATA                                     *
+*                           FUNCTION DEFINITIONS                              *
 ******************************************************************************/
-static struct thread_jump tj_main;
-static struct thread_jump tj_thread;
-
-static volatile pid_t parent_pid;
-static volatile pid_t child_pid;
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-static int monitor_thread(void* arg);
-static NEVER_INLINE int monitor(void);
-/******************************************************************************
-*                              STATIC FUNCTIONS                               *
-******************************************************************************/
-static int monitor_thread(void* arg)
+void syscall_exit(int code)
 {
-	child_pid = getpid();
-
-	tj_swap(&tj_thread, &tj_main, 0);
-
-	syscall_exit(monitor());
-
-	return -1;
-}
-/*****************************************************************************/
-static NEVER_INLINE int monitor(void)
-{
-	int status;
-
-	waitpid(child_pid, &status, 0);
-
-	return status;
-}
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-int start_trace(void)
-{
-	parent_pid = getpid();
-
-	if(fake_pthread(monitor_thread, NULL)) {
-		return 1;
-	}
-
-	tj_swap(&tj_main, &tj_thread, 0);
-	return 0;
+	syscall(SYS_exit,code);
 }
 /*****************************************************************************/

@@ -16,12 +16,11 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#ifndef PLATFORM_H
-#define PLATFORM_H
+#ifndef SYSCALL_UTL_H
+#define SYSCALL_UTL_H
 /******************************************************************************
-*                                   DEFINES                                   *
+*                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-#define ALWAYS_INLINE __attribute__((always_inline))
-#define NEVER_INLINE __attribute__((noinline))
+void syscall_exit(int code);
 /*****************************************************************************/
-#endif /* PLATFORM_H */
+#endif /* SYSCALL_UTL_H */
