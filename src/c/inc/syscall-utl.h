@@ -27,5 +27,9 @@
 ******************************************************************************/
 void syscall_exit(int code);
 pid_t syscall_gettid(void);
+int arch_prctl_get_fs(unsigned long *fs);
+int arch_prctl_set_fs(unsigned long fs);
+int arch_prctl_get_gs(unsigned long *gs);
+int arch_prctl_set_gs(unsigned long gs);
 /*****************************************************************************/
 #endif /* SYSCALL_UTL_H */

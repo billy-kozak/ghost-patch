@@ -25,6 +25,12 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <asm/prctl.h>
+#include <sys/prctl.h>
+/******************************************************************************
+*                            FUNCTION DECLARATIONS                            *
+******************************************************************************/
+int arch_prctl(int code, ...);
 /******************************************************************************
 *                           FUNCTION DEFINITIONS                              *
 ******************************************************************************/
@@ -36,5 +42,25 @@ pid_t syscall_gettid(void)
 void syscall_exit(int code)
 {
 	syscall(SYS_exit,code);
+}
+/*****************************************************************************/
+int arch_prctl_get_fs(unsigned long *fs)
+{
+	return arch_prctl(ARCH_GET_FS, fs);
+}
+/*****************************************************************************/
+int arch_prctl_set_fs(unsigned long fs)
+{
+	return arch_prctl(ARCH_SET_FS, fs);
+}
+/*****************************************************************************/
+int arch_prctl_get_gs(unsigned long *gs)
+{
+	return arch_prctl(ARCH_GET_GS, gs);
+}
+/*****************************************************************************/
+int arch_prctl_set_gs(unsigned long gs)
+{
+	return arch_prctl(ARCH_SET_GS, gs);
 }
 /*****************************************************************************/

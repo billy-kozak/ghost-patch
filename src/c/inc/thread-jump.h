@@ -27,8 +27,6 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <asm/prctl.h>
-#include <sys/prctl.h>
 /******************************************************************************
 *                                    TYPES                                    *
 ******************************************************************************/
@@ -55,7 +53,6 @@ struct thread_jump {
 ******************************************************************************/
 int __tj_swap(struct thread_jump *src, struct thread_jump *dst, int set_fs);
 int __tj_jump(struct thread_jump *src, struct thread_jump *dst, int set_fs);
-int arch_prctl(int code, ...);
 /******************************************************************************
 *                              INLINE FUNCTIONS                               *
 ******************************************************************************/
@@ -71,24 +68,24 @@ static inline ALWAYS_INLINE void tj_jump(struct thread_jump *tj, int set_fs)
 /*****************************************************************************/
 static inline ALWAYS_INLINE void tj_set_and_exit(struct thread_jump *tj)
 {
-	arch_prctl(ARCH_GET_FS, &tj->fs);
-	arch_prctl(ARCH_GET_GS, &tj->gs);
+	arch_prctl_get_fs(&tj->fs);
+	arch_prctl_get_gs(&tj->gs);
 
 	if(__tj_swap(tj, NULL, 0)) {
-		arch_prctl(ARCH_SET_FS, tj->fs);
-		arch_prctl(ARCH_SET_GS, tj->gs);
+		arch_prctl_set_fs(tj->fs);
+		arch_prctl_set_gs(tj->gs);
 	}
 }
 /*****************************************************************************/
 static inline ALWAYS_INLINE void tj_swap(
 	struct thread_jump *src, struct thread_jump *dst, int set_fs
 ) {
-	arch_prctl(ARCH_GET_FS, &src->fs);
-	arch_prctl(ARCH_GET_GS, &src->gs);
+	arch_prctl_get_fs(&src->fs);
+	arch_prctl_get_gs(&src->gs);
 
 	if(__tj_swap(src, dst, set_fs)) {
-		arch_prctl(ARCH_SET_FS, src->fs);
-		arch_prctl(ARCH_SET_GS, src->gs);
+		arch_prctl_set_fs(src->fs);
+		arch_prctl_set_gs(src->gs);
 	}
 }
 /*****************************************************************************/
