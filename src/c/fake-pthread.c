@@ -99,6 +99,7 @@ int fake_pthread(int(*target)(void* arg), void *arg)
 	pthread_attr_t attr;
 	uint8_t *stack;
 	uint8_t *stack_end;
+	int clone_flags;
 
 	volatile struct thread_arg t_arg = {
 		0,
@@ -132,7 +133,15 @@ int fake_pthread(int(*target)(void* arg), void *arg)
 	}
 
 	stack = stack_end + TEMP_STACK_SIZE;
-	if(clone(clone_target, stack, CLONE_VM | SIGCHLD, (void*)&t_arg) == -1) {
+	clone_flags =
+		CLONE_VM |
+		CLONE_FS |
+		CLONE_FILES |
+		CLONE_SIGHAND |
+		CLONE_SYSVSEM |
+		SIGCHLD;
+
+	if(clone(clone_target, stack, clone_flags, (void*)&t_arg) == -1) {
 		ret = 1;
 		goto cleanup_2;
 	}
