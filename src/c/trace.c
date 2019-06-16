@@ -35,6 +35,7 @@
 #include <string.h>
 #include <assert.h>
 #include <signal.h>
+#include <sys/ptrace.h>
 /******************************************************************************
 *                                    DATA                                     *
 ******************************************************************************/
@@ -43,6 +44,8 @@ static struct thread_jump tj_thread;
 
 static volatile pid_t parent_pid;
 static volatile pid_t child_pid;
+
+static volatile int wait_flag;
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
@@ -79,8 +82,20 @@ static NEVER_INLINE int monitor(void)
 	int status;
 
 	waitpid(child_pid, &status, 0);
+	ptrace(PTRACE_SETOPTIONS, child_pid, 0, PTRACE_O_TRACESYSGOOD);
 
-	return status;
+	wait_flag = 1;
+
+	while(1) {
+		ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
+		waitpid(child_pid, &status, 0);
+
+		if(WIFEXITED(status)) {
+			return WEXITSTATUS(status);
+		}
+	}
+
+	return -1;
 }
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
@@ -95,6 +110,11 @@ int start_trace(void)
 
 	tj_swap(&tj_main, &tj_thread, 1);
 	assert(arch_prctl_get_fs_nocheck() == tj_main.fs);
+
+	ptrace(PTRACE_TRACEME, 0, 0, 0);
+	kill(child_pid, SIGSTOP);
+
+	while(wait_flag == 0);
 
 	return 0;
 }
