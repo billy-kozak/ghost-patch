@@ -44,6 +44,14 @@ void syscall_exit(int code)
 	syscall(SYS_exit,code);
 }
 /*****************************************************************************/
+unsigned long arch_prctl_get_fs_nocheck(void)
+{
+	unsigned long fs;
+	arch_prctl(ARCH_GET_FS, &fs);
+
+	return fs;
+}
+/*****************************************************************************/
 int arch_prctl_get_fs(unsigned long *fs)
 {
 	return arch_prctl(ARCH_GET_FS, fs);

@@ -33,6 +33,7 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 /******************************************************************************
 *                                    DATA                                     *
 ******************************************************************************/
@@ -54,6 +55,7 @@ static int monitor_thread(void* arg)
 	child_pid = getpid();
 
 	tj_swap(&tj_thread, &tj_main, 1);
+	assert(arch_prctl_get_fs_nocheck() == tj_thread.fs);
 
 	syscall_exit(monitor());
 
@@ -80,6 +82,8 @@ int start_trace(void)
 	}
 
 	tj_swap(&tj_main, &tj_thread, 1);
+	assert(arch_prctl_get_fs_nocheck() == tj_main.fs);
+
 	return 0;
 }
 /*****************************************************************************/
