@@ -137,7 +137,6 @@ int fake_pthread(int(*target)(void* arg), void *arg)
 		CLONE_VM |
 		CLONE_FS |
 		CLONE_FILES |
-		CLONE_SIGHAND |
 		CLONE_SYSVSEM |
 		SIGCHLD;
 

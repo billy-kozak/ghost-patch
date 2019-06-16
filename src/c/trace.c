@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <signal.h>
 /******************************************************************************
 *                                    DATA                                     *
 ******************************************************************************/
@@ -47,6 +48,7 @@ static volatile pid_t child_pid;
 ******************************************************************************/
 static int monitor_thread(void* arg);
 static NEVER_INLINE int monitor(void);
+static void setup_signal_handling(void);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -57,9 +59,19 @@ static int monitor_thread(void* arg)
 	tj_swap(&tj_thread, &tj_main, 1);
 	assert(arch_prctl_get_fs_nocheck() == tj_thread.fs);
 
+	setup_signal_handling();
+
 	syscall_exit(monitor());
 
 	return -1;
+}
+/*****************************************************************************/
+static void setup_signal_handling(void)
+{
+	sigset_t mask;
+
+	sigfillset(&mask);
+	sigprocmask(SIG_SETMASK, &mask, NULL);
 }
 /*****************************************************************************/
 static NEVER_INLINE int monitor(void)
