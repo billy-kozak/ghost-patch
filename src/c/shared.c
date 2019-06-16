@@ -76,9 +76,10 @@ EXPORT int __libc_start_main(
 			void (*fini)(void),
 			void (*rtld_fini) (void),
 			void (* stack_end)
-		) = dlsym(RTLD_NEXT, "__libc_start_main");
+		);
 
 	if(sigsetjmp(jump_buffer, 0) == 0) {
+		real = dlsym(RTLD_NEXT, "__libc_start_main");
 		return real(
 			fake_main,
 			argc,
@@ -89,6 +90,7 @@ EXPORT int __libc_start_main(
 			stack_end
 		);
 	} else {
+		real = dlsym(RTLD_NEXT, "__libc_start_main");
 		return real(
 			main,
 			argc,
