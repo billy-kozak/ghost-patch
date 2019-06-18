@@ -135,9 +135,6 @@ int fake_pthread(int(*target)(void* arg), void *arg)
 	stack = stack_end + TEMP_STACK_SIZE;
 	clone_flags =
 		CLONE_VM |
-		CLONE_FS |
-		CLONE_FILES |
-		CLONE_SYSVSEM |
 		SIGCHLD;
 
 	if(clone(clone_target, stack, clone_flags, (void*)&t_arg) == -1) {
