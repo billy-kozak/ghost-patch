@@ -38,6 +38,12 @@
 #include <signal.h>
 #include <sys/ptrace.h>
 /******************************************************************************
+*                                   DEFINES                                   *
+******************************************************************************/
+#ifndef DEBUG_MODE_NO_PTRACE
+#define DEBUG_MODE_NO_PTRACE 0
+#endif
+/******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
 static const int SIGNALS_TO_FORWARD[] = {
@@ -63,6 +69,7 @@ static void setup_signal_handling(void);
 static void signal_forwarder_handler(
 	int signo, siginfo_t *info, void *ucontext
 );
+static NEVER_INLINE int only_wait_for_exit(void);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -81,7 +88,12 @@ static int monitor_thread(void* arg)
 
 	setup_signal_handling();
 
-	syscall_exit(monitor());
+	if(DEBUG_MODE_NO_PTRACE) {
+		syscall_exit(only_wait_for_exit());
+	} else {
+		syscall_exit(monitor());
+	}
+
 
 	return -1;
 }
@@ -97,6 +109,26 @@ static void setup_signal_handling(void)
 	for(int i = 0; i < ARR_SIZE(SIGNALS_TO_FORWARD); i++) {
 		sigaction(SIGNALS_TO_FORWARD[i], &fwd_action, NULL);
 	}
+}
+/*****************************************************************************/
+static NEVER_INLINE int only_wait_for_exit(void)
+{
+	int status;
+
+	wait_flag = 1;
+
+	while(1) {
+
+		if(waitpid(child_pid, &status, 0) == -1) {
+			break;
+		}
+
+		if(WIFEXITED(status)) {
+			return WEXITSTATUS(status);
+		}
+	}
+
+	return -1;
 }
 /*****************************************************************************/
 static NEVER_INLINE int monitor(void)
@@ -135,8 +167,10 @@ int start_trace(void)
 	tj_swap(&tj_main, &tj_thread, 1);
 	assert(arch_prctl_get_fs_nocheck() == tj_main.fs);
 
-	ptrace(PTRACE_TRACEME, 0, 0, 0);
-	kill(child_pid, SIGSTOP);
+	if(DEBUG_MODE_NO_PTRACE == 0) {
+		ptrace(PTRACE_TRACEME, 0, 0, 0);
+		kill(child_pid, SIGSTOP);
+	}
 
 	while(wait_flag == 0);
 

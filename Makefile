@@ -83,6 +83,9 @@ CLEAN_FILES += $(wildcard $(ASM_GEN_DIR)/*)
 ###############################################################################
 all: optomized
 
+no_trace: CFLAGS += -DDEBUG_MODE_NO_PTRACE
+no_trace: debug
+
 debug: CFLAGS += -DDEBUG=1 -g
 debug: $(BINARY)
 
