@@ -44,6 +44,11 @@ void syscall_exit(int code)
 	syscall(SYS_exit,code);
 }
 /*****************************************************************************/
+pid_t syscall_getpid(void)
+{
+	return 	(pid_t)syscall(SYS_getpid);
+}
+/*****************************************************************************/
 unsigned long arch_prctl_get_fs_nocheck(void)
 {
 	unsigned long fs;

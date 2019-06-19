@@ -23,6 +23,7 @@
 #include "shared.h"
 
 #include "trace.h"
+#include "syscall-utl.h"
 
 #include <dlfcn.h>
 #include <string.h>
@@ -33,8 +34,6 @@
 /******************************************************************************
 *                                    DATA                                     *
 ******************************************************************************/
-static pid_t (*real_getpid)(void);
-
 static pid_t old_main_pid;
 static pid_t new_main_pid;
 /******************************************************************************
@@ -58,11 +57,11 @@ static bool am_py_trace(const char *progname)
 static int fake_main(int argc, char **argv, char **envp)
 {
 	if(!am_py_trace(argv[0])) {
-		old_main_pid = real_getpid();
+		old_main_pid = syscall_getpid();
 
 		do_special_setup();
 
-		new_main_pid = real_getpid();
+		new_main_pid = syscall_getpid();
 	}
 
 	siglongjmp(jump_buffer, 1);
@@ -89,8 +88,6 @@ EXPORT int __libc_start_main(
 			void (*rtld_fini) (void),
 			void (* stack_end)
 		);
-
-	real_getpid = dlsym(RTLD_NEXT, "getpid");
 
 	if(sigsetjmp(jump_buffer, 0) == 0) {
 		real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
@@ -121,7 +118,7 @@ EXPORT int __libc_start_main(
 /*****************************************************************************/
 EXPORT pid_t getpid(void)
 {
-	pid_t real_pid = real_getpid();
+	pid_t real_pid = syscall_getpid();
 
 	if(real_pid == new_main_pid) {
 		return old_main_pid;

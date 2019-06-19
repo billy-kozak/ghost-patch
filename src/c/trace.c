@@ -81,7 +81,7 @@ static void signal_forwarder_handler(
 /*****************************************************************************/
 static int monitor_thread(void* arg)
 {
-	child_pid = getpid();
+	child_pid = syscall_getpid();
 
 	tj_swap(&tj_thread, &tj_main, 1);
 	assert(arch_prctl_get_fs_nocheck() == tj_thread.fs);
@@ -158,7 +158,7 @@ static NEVER_INLINE int monitor(void)
 ******************************************************************************/
 int start_trace(void)
 {
-	parent_pid = getpid();
+	parent_pid = syscall_getpid();
 
 	if(fake_pthread(monitor_thread, NULL)) {
 		return 1;
