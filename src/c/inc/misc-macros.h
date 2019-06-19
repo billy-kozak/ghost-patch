@@ -22,5 +22,6 @@
 *                                   MACROS                                    *
 ******************************************************************************/
 #define NUM_ARGS(type, ...)  (sizeof((type[]){__VA_ARGS__})/sizeof(type))
+#define ARR_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
 /*****************************************************************************/
 #endif /* MISC_MACROS_H */

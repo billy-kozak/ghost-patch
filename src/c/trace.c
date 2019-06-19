@@ -25,6 +25,7 @@
 #include "fake-pthread.h"
 #include "thread-jump.h"
 #include "syscall-utl.h"
+#include "misc-macros.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -36,6 +37,13 @@
 #include <assert.h>
 #include <signal.h>
 #include <sys/ptrace.h>
+/******************************************************************************
+*                                  CONSTANTS                                  *
+******************************************************************************/
+static const int SIGNALS_TO_FORWARD[] = {
+	SIGHUP, SIGINT, SIGQUIT, SIGKILL, SIGPIPE, SIGALRM,
+	SIGUSR1, SIGUSR2, SIGTSTP, SIGTTIN, SIGTTOU
+};
 /******************************************************************************
 *                                    DATA                                     *
 ******************************************************************************/
@@ -52,9 +60,18 @@ static volatile int wait_flag;
 static int monitor_thread(void* arg);
 static NEVER_INLINE int monitor(void);
 static void setup_signal_handling(void);
+static void signal_forwarder_handler(
+	int signo, siginfo_t *info, void *ucontext
+);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
+static void signal_forwarder_handler(
+	int signo, siginfo_t *info, void *ucontext
+) {
+	kill(child_pid, signo);
+}
+/*****************************************************************************/
 static int monitor_thread(void* arg)
 {
 	child_pid = getpid();
@@ -71,10 +88,15 @@ static int monitor_thread(void* arg)
 /*****************************************************************************/
 static void setup_signal_handling(void)
 {
-	sigset_t mask;
+	struct sigaction fwd_action;
 
-	sigfillset(&mask);
-	sigprocmask(SIG_SETMASK, &mask, NULL);
+	fwd_action.sa_sigaction = signal_forwarder_handler;
+	fwd_action.sa_flags = SA_RESTART | SA_SIGINFO;
+	sigemptyset(&fwd_action.sa_mask);
+
+	for(int i = 0; i < ARR_SIZE(SIGNALS_TO_FORWARD); i++) {
+		sigaction(SIGNALS_TO_FORWARD[i], &fwd_action, NULL);
+	}
 }
 /*****************************************************************************/
 static NEVER_INLINE int monitor(void)
@@ -90,7 +112,9 @@ static NEVER_INLINE int monitor(void)
 		ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
 		waitpid(child_pid, &status, 0);
 
-		if(WIFEXITED(status)) {
+		if(WIFSTOPPED(status)) {
+			ptrace(PTRACE_SYSCALL, child_pid, 0, WSTOPSIG(status));
+		} else if(WIFEXITED(status)) {
 			return WEXITSTATUS(status);
 		}
 	}
