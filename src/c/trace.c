@@ -26,6 +26,7 @@
 #include "thread-jump.h"
 #include "syscall-utl.h"
 #include "misc-macros.h"
+#include "debug-modes.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -37,12 +38,6 @@
 #include <assert.h>
 #include <signal.h>
 #include <sys/ptrace.h>
-/******************************************************************************
-*                                   DEFINES                                   *
-******************************************************************************/
-#ifndef DEBUG_MODE_NO_PTRACE
-#define DEBUG_MODE_NO_PTRACE 0
-#endif
 /******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
@@ -64,12 +59,14 @@ static volatile int wait_flag;
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
 static int monitor_thread(void* arg);
-static NEVER_INLINE int monitor(void);
+static NEVER_INLINE int monitor(pid_t target_pid);
 static void setup_signal_handling(void);
 static void signal_forwarder_handler(
 	int signo, siginfo_t *info, void *ucontext
 );
-static NEVER_INLINE int only_wait_for_exit(void);
+static int only_wait_for_exit(pid_t target_pid);
+static int start_monitor(void);
+static int trace_target(pid_t target_pid);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -88,12 +85,7 @@ static int monitor_thread(void* arg)
 
 	setup_signal_handling();
 
-	if(DEBUG_MODE_NO_PTRACE) {
-		syscall_exit(only_wait_for_exit());
-	} else {
-		syscall_exit(monitor());
-	}
-
+	syscall_exit(monitor(child_pid));
 
 	return -1;
 }
@@ -111,7 +103,16 @@ static void setup_signal_handling(void)
 	}
 }
 /*****************************************************************************/
-static NEVER_INLINE int only_wait_for_exit(void)
+static NEVER_INLINE int monitor(pid_t target_pid)
+{
+	if(DEBUG_MODE_NO_PTRACE) {
+		return only_wait_for_exit(target_pid);
+	} else {
+		return trace_target(target_pid);
+	}
+}
+/*****************************************************************************/
+static int only_wait_for_exit(pid_t target_pid)
 {
 	int status;
 
@@ -119,7 +120,7 @@ static NEVER_INLINE int only_wait_for_exit(void)
 
 	while(1) {
 
-		if(waitpid(child_pid, &status, 0) == -1) {
+		if(waitpid(target_pid, &status, 0) == -1) {
 			break;
 		}
 
@@ -131,27 +132,53 @@ static NEVER_INLINE int only_wait_for_exit(void)
 	return -1;
 }
 /*****************************************************************************/
-static NEVER_INLINE int monitor(void)
+static int trace_target(pid_t target_pid)
 {
 	int status;
 
-	waitpid(child_pid, &status, 0);
-	ptrace(PTRACE_SETOPTIONS, child_pid, 0, PTRACE_O_TRACESYSGOOD);
+	waitpid(target_pid, &status, 0);
+	ptrace(PTRACE_SETOPTIONS, target_pid, 0, PTRACE_O_TRACESYSGOOD);
 
 	wait_flag = 1;
 
+	ptrace(PTRACE_CONT, target_pid, 0, 0);
+
 	while(1) {
-		ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
-		waitpid(child_pid, &status, 0);
+
+		if(waitpid(target_pid, &status, 0) == -1) {
+			perror(NULL);
+			break;
+		}
 
 		if(WIFSTOPPED(status)) {
-			ptrace(PTRACE_SYSCALL, child_pid, 0, WSTOPSIG(status));
+			ptrace(PTRACE_CONT, target_pid, 0, 0);
 		} else if(WIFEXITED(status)) {
 			return WEXITSTATUS(status);
 		}
 	}
 
 	return -1;
+}
+/*****************************************************************************/
+static int start_monitor(void)
+{
+	if(DEBUG_MODE_NO_THREAD) {
+		if((child_pid = fork()) != 0) {
+			syscall_exit(monitor(child_pid));
+		} else {
+			child_pid = syscall_getpid();
+		}
+		return 0;
+	} else {
+		if(fake_pthread(monitor_thread, NULL)) {
+			return 1;
+		}
+
+		tj_swap(&tj_main, &tj_thread, 1);
+		assert(arch_prctl_get_fs_nocheck() == tj_main.fs);
+
+		return 0;
+	}
 }
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
@@ -160,19 +187,18 @@ int start_trace(void)
 {
 	parent_pid = syscall_getpid();
 
-	if(fake_pthread(monitor_thread, NULL)) {
+	if(start_monitor()) {
 		return 1;
 	}
-
-	tj_swap(&tj_main, &tj_thread, 1);
-	assert(arch_prctl_get_fs_nocheck() == tj_main.fs);
 
 	if(DEBUG_MODE_NO_PTRACE == 0) {
 		ptrace(PTRACE_TRACEME, 0, 0, 0);
 		kill(child_pid, SIGSTOP);
 	}
 
-	while(wait_flag == 0);
+	if(DEBUG_MODE_NO_THREAD == 0) {
+		while(wait_flag == 0);
+	}
 
 	return 0;
 }

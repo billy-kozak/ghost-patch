@@ -21,6 +21,8 @@
 ******************************************************************************/
 #include "proc-utl.h"
 #include "str-utl.h"
+#include "debug-modes.h"
+#include "trace.h"
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -58,7 +60,12 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	setup_ld_preload();
+	if(DEBUG_MODE_NO_THREAD) {
+		start_trace();
+	} else {
+		setup_ld_preload();
+	}
+
 
 	if(execvp(argv[1], argv + 1)) {
 		perror(NULL);
