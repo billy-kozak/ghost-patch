@@ -136,7 +136,7 @@ static int trace_target(pid_t target_pid)
 {
 	int status;
 
-	waitpid(target_pid, &status, 0);
+	waitpid(target_pid, &status, __WALL);
 	ptrace(PTRACE_SETOPTIONS, target_pid, 0, PTRACE_O_TRACESYSGOOD);
 
 	wait_flag = 1;
@@ -145,7 +145,7 @@ static int trace_target(pid_t target_pid)
 
 	while(1) {
 
-		if(waitpid(target_pid, &status, 0) == -1) {
+		if(waitpid(-1, &status, __WALL) == -1) {
 			perror(NULL);
 			break;
 		}
