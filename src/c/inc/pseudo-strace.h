@@ -16,64 +16,15 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef PSEUDO_STRACE_H
+#define PSEUDO_STRACE_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "str-utl.h"
-#include "debug-modes.h"
 #include "trace.h"
-#include "pseudo-strace.h"
-
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-static void setup_ld_preload(void);
-/******************************************************************************
-*                              STATIC FUNCTIONS                               *
-******************************************************************************/
-static void setup_ld_preload(void)
-{
-	char *executable = this_executable();
-	char *current = getenv("LD_PRELOAD");
-	char *new = NULL;
-
-	if(current == NULL) {
-		new = copy_string(executable);
-	} else {
-		new = concatenate_strings(executable, ":", current);
-	}
-
-	setenv("LD_PRELOAD", new, 1);
-
-	free(executable);
-	free(new);
-}
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-int main(int argc, char **argv)
-{
-	if(argc <= 1) {
-		return 0;
-	}
-
-	if(DEBUG_MODE_NO_THREAD) {
-		struct trace_descriptor descr = pseudo_strace_descriptor();
-
-		start_trace(&descr);
-	} else {
-		setup_ld_preload();
-	}
-
-
-	if(execvp(argv[1], argv + 1)) {
-		perror(NULL);
-	}
-
-	return -1;
-}
+struct trace_descriptor pseudo_strace_descriptor(void);
 /*****************************************************************************/
+#endif /* PSEUDO_STRACE_H */

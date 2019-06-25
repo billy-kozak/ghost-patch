@@ -16,117 +16,57 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#define _GNU_SOURCE
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "shared.h"
-
-#include "trace.h"
-#include "syscall-utl.h"
 #include "pseudo-strace.h"
 
-#include <dlfcn.h>
-#include <string.h>
+#include "trace.h"
+
+#include <stdlib.h>
 #include <stdio.h>
-#include <stdbool.h>
-#include <setjmp.h>
-#include <sys/types.h>
-/******************************************************************************
-*                                    DATA                                     *
-******************************************************************************/
-static pid_t old_main_pid;
-static pid_t new_main_pid;
-/******************************************************************************
-*                              STATIC FUNCTIONS                               *
-******************************************************************************/
-static bool am_py_trace(const char *progname);
-static sigjmp_buf jump_buffer;
-/*****************************************************************************/
-static void do_special_setup(void)
-{
-	struct trace_descriptor descr = pseudo_strace_descriptor();
-
-	if(start_trace(&descr)) {
-		perror("Unable to start trace");
-	}
-}
-/*****************************************************************************/
-static bool am_py_trace(const char *progname)
-{
-	return strcmp(basename(progname), "py-trace") == 0;
-}
-/*****************************************************************************/
-static int fake_main(int argc, char **argv, char **envp)
-{
-	if(!am_py_trace(argv[0])) {
-		old_main_pid = syscall_getpid();
-
-		do_special_setup();
-
-		new_main_pid = syscall_getpid();
-	}
-
-	siglongjmp(jump_buffer, 1);
-	return 0;
-}
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-EXPORT int __libc_start_main(
-	int (*main)(int, char **, char **),
-	int argc,
-	char **ubp_av,
-	void (*init)(void),
-	void (*fini)(void),
-	void (*rtld_fini) (void),
-	void (* stack_end)
-) {
-	int (*real_libc_start_main)
-		(
-			int (*main)(int, char **, char **),
-			int argc,
-			char **ubp_av, void (*init)(void),
-			void (*fini)(void),
-			void (*rtld_fini) (void),
-			void (* stack_end)
-		);
-
-	if(sigsetjmp(jump_buffer, 0) == 0) {
-		real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
-		return real_libc_start_main(
-			fake_main,
-			argc,
-			ubp_av,
-			init,
-			fini,
-			rtld_fini,
-			stack_end
-		);
-	} else {
-		real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
-		return real_libc_start_main(
-			main,
-			argc,
-			ubp_av,
-			init,
-			fini,
-			rtld_fini,
-			stack_end
-		);
-	}
-
-
+static void* init(void *arg);
+static void* handle(void *argg, const struct tracee_state *state);
+/******************************************************************************
+*                              STATIC FUNCTIONS                               *
+******************************************************************************/
+static void* init(void *arg)
+{
+	return fopen("/dev/stderr", "w");
 }
 /*****************************************************************************/
-EXPORT pid_t getpid(void)
+static void* handle(void *arg, const struct tracee_state *state)
 {
-	pid_t real_pid = syscall_getpid();
-
-	if(real_pid == new_main_pid) {
-		return old_main_pid;
-	} else {
-		return real_pid;
+	if(state->status == SYSCALL_ENTER_STOP) {
+		fprintf(
+			arg, "Enter syscall: %llu\n", state->data.regs.orig_rax
+		);
+	} else if(state->status == SYSCALL_EXIT_STOP) {
+		fprintf(
+			arg, "Exit syscall: %llu\n", state->data.regs.orig_rax
+		);
+	} else if(state->status == EXITED_NORMAL) {
+		fprintf(
+			arg, "Exited: %d\n", state->data.exit_status
+		);
 	}
+
+	return arg;
+}
+/******************************************************************************
+*                            FUNCTION DEFINITIONS                             *
+******************************************************************************/
+struct trace_descriptor pseudo_strace_descriptor(void)
+{
+	struct trace_descriptor descr;
+
+	descr.handle = handle;
+	descr.init = init;
+	descr.arg = NULL;
+
+	return descr;
 }
 /*****************************************************************************/

@@ -27,6 +27,7 @@
 #include "syscall-utl.h"
 #include "misc-macros.h"
 #include "debug-modes.h"
+#include "tracee-state-table.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -38,6 +39,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <sys/ptrace.h>
+#include <stdbool.h>
 /******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
@@ -55,6 +57,9 @@ static volatile pid_t parent_pid;
 static volatile pid_t child_pid;
 
 static volatile int wait_flag;
+
+static struct trace_descriptor descriptor;
+static void *state_tab;
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
@@ -67,6 +72,12 @@ static void signal_forwarder_handler(
 static int only_wait_for_exit(pid_t target_pid);
 static int start_monitor(void);
 static int trace_target(pid_t target_pid);
+static void call_descriptor(const struct tracee_state *state);
+static int load_regs(struct tracee_state *state);
+static bool is_syscall_stop(int status);
+static bool is_group_stop(int status);
+static bool is_event_stop(int status);
+static bool is_signal_stop(int status);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -105,11 +116,19 @@ static void setup_signal_handling(void)
 /*****************************************************************************/
 static NEVER_INLINE int monitor(pid_t target_pid)
 {
+	int exit_status;
+
+	descriptor.arg = descriptor.init(descriptor.arg);
+
 	if(DEBUG_MODE_NO_PTRACE) {
-		return only_wait_for_exit(target_pid);
+		exit_status = only_wait_for_exit(target_pid);
 	} else {
-		return trace_target(target_pid);
+		exit_status = trace_target(target_pid);
 	}
+
+	tracee_state_table_destroy(state_tab);
+
+	return exit_status;
 }
 /*****************************************************************************/
 static int only_wait_for_exit(pid_t target_pid)
@@ -134,26 +153,87 @@ static int only_wait_for_exit(pid_t target_pid)
 /*****************************************************************************/
 static int trace_target(pid_t target_pid)
 {
+	struct tracee_state state;
 	int status;
 
 	waitpid(target_pid, &status, __WALL);
 	ptrace(PTRACE_SETOPTIONS, target_pid, 0, PTRACE_O_TRACESYSGOOD);
+	ptrace(PTRACE_SEIZE, target_pid, 0, 0);
+
+
+	state.status = STARTED;
+	state.pid = target_pid;
+
+	call_descriptor(&state);
 
 	wait_flag = 1;
-
-	ptrace(PTRACE_CONT, target_pid, 0, 0);
+	ptrace(PTRACE_SYSCALL, target_pid, 0, 0);
 
 	while(1) {
+		int sig = 0;
 
-		if(waitpid(-1, &status, __WALL) == -1) {
-			perror(NULL);
+		if((state.pid = waitpid(-1, &status, __WALL)) == -1) {
+			state.status = EXITED_UNEXPECTED;
+			call_descriptor(&state);
 			break;
 		}
 
-		if(WIFSTOPPED(status)) {
-			ptrace(PTRACE_CONT, target_pid, 0, 0);
-		} else if(WIFEXITED(status)) {
-			return WEXITSTATUS(status);
+
+		if(WIFEXITED(status)) {
+			state.status = EXITED_NORMAL;
+			state.data.exit_status = WEXITSTATUS(status);
+			call_descriptor(&state);
+
+			if(state.pid == target_pid) {
+				return state.data.exit_status;
+			}
+		} else if(is_syscall_stop(status)) {
+			uint8_t prev_state = tracee_state_table_retrieve(
+				state_tab, state.pid
+			);
+
+			if(prev_state == SYSCALL_ENTER_STOP) {
+				state.status = SYSCALL_EXIT_STOP;
+			} else {
+				state.status = SYSCALL_ENTER_STOP;
+			}
+
+			if(load_regs(&state) == 0) {
+				call_descriptor(&state);
+			} else {
+				state.status = EXITED_UNEXPECTED;
+				call_descriptor(&state);
+
+				if(state.pid == target_pid) {
+					break;
+				}
+			}
+		} else if(is_group_stop(status)) {
+			state.status = GROUP_STOP;
+			call_descriptor(&state);
+
+		} else if(is_event_stop(status)) {
+			state.status = PTRACE_EVENT_OCCURED_STOP;
+			call_descriptor(&state);
+
+		} else if(is_signal_stop(status)) {
+			sig = WSTOPSIG(status);
+
+			state.status = SIGNAL_DELIVERY_STOP;
+			state.data.signo = sig;
+
+			call_descriptor(&state);
+		}
+
+		tracee_state_table_store(state_tab, state.pid, state.status);
+
+		if(ptrace(PTRACE_SYSCALL, state.pid, 0, sig) == -1) {
+			state.status = EXITED_UNEXPECTED;
+			call_descriptor(&state);
+
+			if(state.pid == target_pid) {
+				break;
+			}
 		}
 	}
 
@@ -180,11 +260,63 @@ static int start_monitor(void)
 		return 0;
 	}
 }
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-int start_trace(void)
+/*****************************************************************************/
+static int load_regs(struct tracee_state *state)
 {
+	return ptrace(PTRACE_GETREGS, state->pid, 0, &state->data.regs) == -1;
+}
+/*****************************************************************************/
+static void call_descriptor(const struct tracee_state *state)
+{
+	descriptor.arg = descriptor.handle(descriptor.arg, state);
+}
+/*****************************************************************************/
+static bool is_syscall_stop(int status)
+{
+	if(!WIFSTOPPED(status)) {
+		return false;
+	} else {
+		return !!(WSTOPSIG(status) & 0x80);
+	}
+}
+/*****************************************************************************/
+static bool is_group_stop(int status)
+{
+	return (status >> 16) == PTRACE_EVENT_STOP;
+}
+/*****************************************************************************/
+static bool is_event_stop(int status)
+{
+	int signal = WSTOPSIG(status);
+
+	if(!WIFSTOPPED(status)) {
+		return false;
+	}
+
+	return (signal == SIGTRAP) && !!(0xFF & (status >> 8));
+}
+/*****************************************************************************/
+static bool is_signal_stop(int status)
+{
+	return
+		WIFSTOPPED(status) &&
+		!is_syscall_stop(status) &&
+		!is_group_stop(status) &&
+		!is_event_stop(status);
+}
+/******************************************************************************
+*                            FUNCTION DEFINITIONS                             *
+******************************************************************************/
+int start_trace(const struct trace_descriptor *descr)
+{
+	state_tab = tracee_state_table_init();
+
+	if(state_tab == NULL) {
+		return 1;
+	}
+
+	memcpy(&descriptor, descr, sizeof(descriptor));
+
 	parent_pid = syscall_getpid();
 
 	if(start_monitor()) {

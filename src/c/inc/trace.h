@@ -19,8 +19,46 @@
 #ifndef TRACE_H
 #define TRACE_H
 /******************************************************************************
+*                                  INCLUDES                                   *
+******************************************************************************/
+#include <sys/types.h>
+#include <sys/user.h>
+/******************************************************************************
+*                                    TYPES                                    *
+******************************************************************************/
+enum tracee_status {
+	STARTED,
+	EXITED_NORMAL,
+	EXITED_UNEXPECTED,
+	SYSCALL_ENTER_STOP,
+	SYSCALL_EXIT_STOP,
+	SIGNAL_DELIVERY_STOP,
+	GROUP_STOP,
+	PTRACE_EVENT_OCCURED_STOP
+};
+/*****************************************************************************/
+struct tracee_state {
+	enum tracee_status status;
+	pid_t pid;
+
+	union {
+		int exit_status;
+		int signo;
+		struct user_regs_struct regs;
+	} data;
+};
+/*****************************************************************************/
+typedef void* (*trace_handler)(void *arg, const struct tracee_state *state);
+typedef void* (*trace_handler_init)(void *arg);
+/*****************************************************************************/
+struct trace_descriptor {
+	trace_handler handle;
+	trace_handler_init init;
+	void *arg;
+};
+/******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-int start_trace(void);
+int start_trace(const struct trace_descriptor *descr);
 /*****************************************************************************/
 #endif /* TRACE_H */
