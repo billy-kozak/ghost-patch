@@ -26,8 +26,8 @@ LD := gcc
 CFLAGS += -Wall -std=gnu99
 LDFLAGS += -Wall
 
-CFLAGS += -fvisibility=hidden
-LDFLAGS += -fvisibility=hidden
+CFLAGS += -fvisibility=hidden -fPIC
+LDFLAGS += -fvisibility=hidden -fPIC
 
 PROJECT := py-trace
 
@@ -122,7 +122,7 @@ $(ASM_GEN): $(ASM_GEN_DIR)/%.s : %.c | $(ASM_GEN_DIR)/.dir_dummy
 	$(CC) $(CFLAGS) -S $< -o $@
 
 $(BINARY): $(OBJ_FILES) | $(EXE_DIR)/.dir_dummy
-	$(LD) $(LDFLAGS) -fPIC -pie  $^ $(LIBS) -o $@
+	$(LD) $(LDFLAGS) -pie  $^ $(LIBS) -o $@
 
 clean:
 	rm -f $(CLEAN_FILES)
