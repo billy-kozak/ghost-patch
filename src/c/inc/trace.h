@@ -44,6 +44,7 @@ struct tracee_state {
 	union {
 		int exit_status;
 		int signo;
+		int pt_event;
 		struct user_regs_struct regs;
 	} data;
 };

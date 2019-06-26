@@ -79,6 +79,7 @@ static bool is_syscall_stop(int status);
 static bool is_group_stop(int status);
 static bool is_event_stop(int status);
 static bool is_signal_stop(int status);
+static int extract_ptrace_event(int status);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -157,10 +158,14 @@ static int trace_target(pid_t target_pid)
 	struct tracee_state state;
 	int status;
 
-	waitpid(target_pid, &status, __WALL);
-	ptrace(PTRACE_SETOPTIONS, target_pid, 0, PTRACE_O_TRACESYSGOOD);
-	ptrace(PTRACE_SEIZE, target_pid, 0, 0);
+	int options =
+		PTRACE_O_TRACESYSGOOD |
+		PTRACE_O_TRACECLONE;
 
+	waitpid(target_pid, &status, __WALL);
+
+	ptrace(PTRACE_SEIZE, target_pid, 0, options);
+	ptrace(PTRACE_SETOPTIONS, target_pid, 0, options);
 
 	state.status = STARTED;
 	state.pid = target_pid;
@@ -210,13 +215,21 @@ static int trace_target(pid_t target_pid)
 				}
 			}
 		} else if(is_group_stop(status)) {
+
 			state.status = GROUP_STOP;
 			call_descriptor(&state);
 
 		} else if(is_event_stop(status)) {
-			state.status = PTRACE_EVENT_OCCURED_STOP;
-			call_descriptor(&state);
 
+			state.data.pt_event = extract_ptrace_event(status);
+
+			if(state.data.pt_event == PTRACE_EVENT_CLONE) {
+				state.status = STARTED;
+				call_descriptor(&state);
+			} else {
+				state.status = PTRACE_EVENT_OCCURED_STOP;
+				call_descriptor(&state);
+			}
 		} else if(is_signal_stop(status)) {
 			sig = WSTOPSIG(status);
 
@@ -270,6 +283,11 @@ static int load_regs(struct tracee_state *state)
 static void call_descriptor(const struct tracee_state *state)
 {
 	descriptor.arg = descriptor.handle(descriptor.arg, state);
+}
+/*****************************************************************************/
+static int extract_ptrace_event(int status)
+{
+	return ((status >> 8) & ~SIGTRAP) >> 8;
 }
 /*****************************************************************************/
 static bool is_syscall_stop(int status)

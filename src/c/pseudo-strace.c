@@ -42,15 +42,24 @@ static void* handle(void *arg, const struct tracee_state *state)
 {
 	if(state->status == SYSCALL_ENTER_STOP) {
 		fprintf(
-			arg, "Enter syscall: %llu\n", state->data.regs.orig_rax
+			arg,
+			"[ID %d]: Enter syscall: %llu\n",
+			state->pid,
+			state->data.regs.orig_rax
 		);
 	} else if(state->status == SYSCALL_EXIT_STOP) {
 		fprintf(
-			arg, "Exit syscall: %llu\n", state->data.regs.orig_rax
+			arg,
+			"[ID %d]: Exit syscall: %llu\n",
+			state->pid,
+			state->data.regs.orig_rax
 		);
 	} else if(state->status == EXITED_NORMAL) {
 		fprintf(
-			arg, "Exited: %d\n", state->data.exit_status
+			arg,
+			"[ID %d]: Exited: %d\n",
+			state->pid,
+			state->data.exit_status
 		);
 	}
 
