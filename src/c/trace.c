@@ -39,6 +39,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <sys/ptrace.h>
+#include <linux/ptrace.h>
 #include <stdbool.h>
 /******************************************************************************
 *                                  CONSTANTS                                  *
