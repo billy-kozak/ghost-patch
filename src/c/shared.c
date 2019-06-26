@@ -25,6 +25,7 @@
 #include "trace.h"
 #include "syscall-utl.h"
 #include "pseudo-strace.h"
+#include "application.h"
 
 #include <dlfcn.h>
 #include <string.h>
@@ -54,7 +55,7 @@ static void do_special_setup(void)
 /*****************************************************************************/
 static bool am_py_trace(const char *progname)
 {
-	return strcmp(basename(progname), "py-trace") == 0;
+	return strcmp(basename(progname), APPLICATION_NAME) == 0;
 }
 /*****************************************************************************/
 static int fake_main(int argc, char **argv, char **envp)

@@ -28,6 +28,7 @@
 #include "misc-macros.h"
 #include "debug-modes.h"
 #include "tracee-state-table.h"
+#include "application.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -41,6 +42,7 @@
 #include <sys/ptrace.h>
 #include <linux/ptrace.h>
 #include <stdbool.h>
+#include <sys/prctl.h>
 /******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
@@ -96,7 +98,9 @@ static int monitor_thread(void* arg)
 	tj_swap(&tj_thread, &tj_main, 1);
 	assert(arch_prctl_get_fs_nocheck() == tj_thread.fs);
 
+	application_set_proc_name();
 	setup_signal_handling();
+
 
 	syscall_exit(monitor(child_pid));
 
