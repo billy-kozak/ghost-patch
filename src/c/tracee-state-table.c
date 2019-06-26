@@ -145,8 +145,8 @@ void *tracee_state_table_init(void)
 			return NULL;
 		}
 		mem_size =
-			(max_threads / pagesize) * pagesize
-			+ max_threads % pagesize ? pagesize : 0;
+			((max_threads / pagesize) * pagesize)
+			+ ((max_threads % pagesize) ? pagesize : 0);
 	}
 
 	/* avoid calling malloc when we are operating within the memory
