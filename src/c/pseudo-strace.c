@@ -32,25 +32,56 @@
 #include <assert.h>
 #include <ctype.h>
 #include <string.h>
+#include <sys/mman.h>
+/******************************************************************************
+*                                    TYPES                                    *
+******************************************************************************/
+struct named_flag {
+	const char *name;
+	int flag;
+};
 /******************************************************************************
 *                                   MACROS                                    *
 ******************************************************************************/
 #define SYSCALL_ARG(type, n, regs) (type)syscall_arg(n, regs)
 #define SYSCALL_RETVAL(type, regs) (type)syscall_retval(regs)
 
-#define SYSCALL_BUF(str, strlen, n, x, regs) \
+#define SYSCALL_BUF(str, slen, n, x, regs) \
 	sprint_buffer( \
 		SYSCALL_ARG(char*, n, regs), \
 		str, \
 		SYSCALL_ARG(ssize_t, x, regs), \
-		strlen \
+		slen \
 	)
+
+#define SYSCALL_FLAG(str, slen, names, n, regs) \
+	sprint_flags(str, slen, names, SYSCALL_ARG(int, n, regs))
 
 #define CHAR_ARR_STRLEN(s) (sizeof(s) - 1)
 /******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
 static const ssize_t PRINT_BUFFER_SIZE = 256;
+
+static const struct named_flag MMAP_FLAGS[] = {
+	{"MAP_SHARED", MAP_SHARED},
+	{"MAP_PRIVATE", MAP_PRIVATE},
+	{"MAP_32BIT", MAP_32BIT},
+	{"MAP_ANON", MAP_ANON},
+	{"MAP_ANONYMOUS", MAP_ANONYMOUS},
+	{"MAP_DENYWRITE", MAP_DENYWRITE},
+	{"MAP_EXECUTABLE", MAP_EXECUTABLE},
+	{"MAP_FILE", MAP_FILE},
+	{"MAP_FIXED", MAP_FIXED},
+	{"MAP_GROWSDOWN", MAP_GROWSDOWN},
+	{"MAP_HUGETLB", MAP_HUGETLB},
+	{"MAP_LOCKED", MAP_LOCKED},
+	{"MAP_NONBLOCK", MAP_NONBLOCK},
+	{"MAP_NORESERVE", MAP_NORESERVE},
+	{"MAP_POPULATE", MAP_POPULATE},
+	{"MAP_STACK", MAP_STACK},
+	{NULL}
+};
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
@@ -69,9 +100,49 @@ static char *sprint_buffer(
 	ssize_t buffer_size,
 	ssize_t space_size
 );
+static char *sprint_flags(
+	char *str, ssize_t size, const struct named_flag *names, int flag
+);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
+static char *sprint_flags(
+	char *str, ssize_t size, const struct named_flag *names, int flag
+) {
+	const char continuation[] = "|...";
+	char *p = str;
+
+	size -= sizeof(continuation);
+
+	if(size < 0) {
+		return NULL;
+	}
+
+	for(const struct named_flag *n = names; n->name != NULL; n += 1) {
+		size_t slen = strlen(n->name);
+
+		if(!(n->flag & flag)) {
+			continue;
+		}
+
+		if(slen > (size + 1)) {
+			memcpy(p, continuation, sizeof(continuation));
+			return str;
+		}
+
+		if(p != str) {
+			p[0] = '|';
+			p += 1;
+		}
+
+		memcpy(p, n->name, slen);
+		p += slen;
+	}
+
+	*p = '\0';
+	return str;
+}
+/*****************************************************************************/
 static char octal_char(int val, int n)
 {
 	return ((val >> (3 * n)) & 0x7) + '0';
@@ -228,12 +299,15 @@ static void print_syscall(
 		break;
 	case SYS_mmap:
 		fprintf(
-			fp, "[ID %d]: mmap(%p, %ld, %d, %d, %d, %lu) = %p\n",
+			fp, "[ID %d]: mmap(%p, %ld, %d, %s, %d, %lu) = %p\n",
 			pid,
 			SYSCALL_ARG(void*,    0, regs),
 			SYSCALL_ARG(int64_t,  1, regs),
 			SYSCALL_ARG(int,      2, regs),
-			SYSCALL_ARG(int,      3, regs),
+			SYSCALL_FLAG(
+				p_buffer, PRINT_BUFFER_SIZE,
+				MMAP_FLAGS, 3, regs
+			),
 			SYSCALL_ARG(int,      4, regs),
 			SYSCALL_ARG(uint64_t, 5, regs),
 			SYSCALL_RETVAL(void*,    regs)
