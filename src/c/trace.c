@@ -163,6 +163,7 @@ static int trace_target(pid_t target_pid)
 	int status;
 
 	int options =
+		PTRACE_O_EXITKILL |
 		PTRACE_O_TRACESYSGOOD |
 		PTRACE_O_TRACECLONE;
 
