@@ -256,6 +256,17 @@ static void print_syscall(
 			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
+	case SYS_clone:
+		fprintf(
+			fp, "[ID %d]: clone(%lu, %lu, %p, %d) = %d\n",
+			pid,
+			SYSCALL_ARG(uint64_t,  0, regs),
+			SYSCALL_ARG(uint64_t,  1, regs),
+			SYSCALL_ARG(void*,     2, regs),
+			SYSCALL_ARG(int,       3, regs),
+			SYSCALL_RETVAL(int,    regs)
+		);
+		break;
 	case SYS_getdents:
 		fprintf(
 			fp, "[ID %d]: getdents(%d, %p, %d) = %d\n",
@@ -292,7 +303,9 @@ static void* init(void *arg)
 /*****************************************************************************/
 static void* handle(void *arg, const struct tracee_state *state)
 {
-	if(state->status == SYSCALL_ENTER_STOP) {
+	if(state->status == STARTED) {
+		printf("[ID %d]: Started\n", state->pid);
+	} else if(state->status == SYSCALL_ENTER_STOP) {
 
 	} else if(state->status == SYSCALL_EXIT_STOP) {
 		print_syscall(arg, state->pid, &state->data.regs);
