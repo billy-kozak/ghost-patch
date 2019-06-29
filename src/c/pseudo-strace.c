@@ -35,14 +35,14 @@
 /******************************************************************************
 *                                   MACROS                                    *
 ******************************************************************************/
-#define SYCALL_ARG(type, n, regs) (type)syscall_arg(n, regs)
-#define SYCALL_RETVAL(type, regs) (type)syscall_retval(regs)
+#define SYSCALL_ARG(type, n, regs) (type)syscall_arg(n, regs)
+#define SYSCALL_RETVAL(type, regs) (type)syscall_retval(regs)
 
 #define SYSCALL_BUF(str, strlen, n, x, regs) \
 	sprint_buffer( \
-		SYCALL_ARG(char*, n, regs), \
+		SYSCALL_ARG(char*, n, regs), \
 		str, \
-		SYCALL_ARG(ssize_t, x, regs), \
+		SYSCALL_ARG(ssize_t, x, regs), \
 		strlen \
 	)
 
@@ -189,88 +189,98 @@ static void print_syscall(
 	int syscall_no = regs->orig_rax;
 
 	switch(syscall_no) {
+	case SYS_read:
+		fprintf(
+			fp, "[ID %d]: read(%d, %p, %ld) = %d\n",
+			pid,
+			SYSCALL_ARG(int,     0, regs),
+			SYSCALL_ARG(void*,   1, regs),
+			SYSCALL_ARG(int64_t, 2, regs),
+			SYSCALL_RETVAL(int, regs)
+		);
+		break;
 	case SYS_write:
 		fprintf(
 			fp, "[ID %d]: write(%d, %s, %ld) = %d\n",
 			pid,
-			SYCALL_ARG(int,     0, regs),
+			SYSCALL_ARG(int,     0, regs),
 			SYSCALL_BUF(p_buffer, PRINT_BUFFER_SIZE, 1, 2, regs),
-			SYCALL_ARG(int64_t, 2, regs),
-			SYCALL_RETVAL(int, regs)
+			SYSCALL_ARG(int64_t, 2, regs),
+			SYSCALL_RETVAL(int, regs)
 		);
 		break;
 	case SYS_close:
 		fprintf(
 			fp, "[ID %d]: close(%d) = %d\n",
 			pid,
-			SYCALL_ARG(int,     0, regs),
-			SYCALL_RETVAL(int, regs)
+			SYSCALL_ARG(int,     0, regs),
+			SYSCALL_RETVAL(int, regs)
 		);
 		break;
 	case SYS_fstat:
 		fprintf(
 			fp, "[ID %d]: fstat(%d, %p) = %d\n",
 			pid,
-			SYCALL_ARG(int,     0, regs),
-			SYCALL_ARG(void*,   1, regs),
-			SYCALL_RETVAL(int, regs)
+			SYSCALL_ARG(int,     0, regs),
+			SYSCALL_ARG(void*,   1, regs),
+			SYSCALL_RETVAL(int, regs)
 		);
 		break;
 	case SYS_mmap:
 		fprintf(
 			fp, "[ID %d]: mmap(%p, %ld, %d, %d, %d, %lu) = %p\n",
 			pid,
-			SYCALL_ARG(void*,    0, regs),
-			SYCALL_ARG(int64_t,  1, regs),
-			SYCALL_ARG(int,      2, regs),
-			SYCALL_ARG(int,      3, regs),
-			SYCALL_ARG(int,      4, regs),
-			SYCALL_ARG(uint64_t, 5, regs),
-			SYCALL_RETVAL(void*,    regs)
+			SYSCALL_ARG(void*,    0, regs),
+			SYSCALL_ARG(int64_t,  1, regs),
+			SYSCALL_ARG(int,      2, regs),
+			SYSCALL_ARG(int,      3, regs),
+			SYSCALL_ARG(int,      4, regs),
+			SYSCALL_ARG(uint64_t, 5, regs),
+			SYSCALL_RETVAL(void*,    regs)
 		);
 		break;
 	case SYS_ioctl:
 		fprintf(
 			fp, "[ID %d]: ioctl(%d, %lu, %p) = %d\n",
 			pid,
-			SYCALL_ARG(int,       0, regs),
-			SYCALL_ARG(uint64_t,  1, regs),
-			SYCALL_ARG(void*,     2, regs),
-			SYCALL_RETVAL(int,    regs)
+			SYSCALL_ARG(int,       0, regs),
+			SYSCALL_ARG(uint64_t,  1, regs),
+			SYSCALL_ARG(void*,     2, regs),
+			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
 	case SYS_getpid:
 		fprintf(
 			fp, "[ID %d]: getpid() = %d\n",
 			pid,
-			SYCALL_RETVAL(int,    regs)
+			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
 	case SYS_getdents:
 		fprintf(
 			fp, "[ID %d]: getdents(%d, %p, %d) = %d\n",
 			pid,
-			SYCALL_ARG(int,       0, regs),
-			SYCALL_ARG(void*,     1, regs),
-			SYCALL_ARG(int,       2, regs),
-			SYCALL_RETVAL(int,    regs)
+			SYSCALL_ARG(int,       0, regs),
+			SYSCALL_ARG(void*,     1, regs),
+			SYSCALL_ARG(int,       2, regs),
+			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
 	case SYS_openat:
 		fprintf(
 			fp, "[ID %d]: openat(%d, %p, %d, %d) = %d\n",
 			pid,
-			SYCALL_ARG(int,       0, regs),
-			SYCALL_ARG(void*,     1, regs),
-			SYCALL_ARG(int,       2, regs),
-			SYCALL_ARG(int,       3, regs),
-			SYCALL_RETVAL(int,    regs)
+			SYSCALL_ARG(int,       0, regs),
+			SYSCALL_ARG(void*,     1, regs),
+			SYSCALL_ARG(int,       2, regs),
+			SYSCALL_ARG(int,       3, regs),
+			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
 	default:
 		fprintf(
 			fp, "[ID %d]: syscall(%d, ...) = %lu\n",
-			pid, syscall_no, SYCALL_RETVAL(uint64_t, regs)
+			pid, syscall_no, SYSCALL_RETVAL(uint64_t, regs)
 		);
 	}
 }
