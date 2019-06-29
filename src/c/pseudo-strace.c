@@ -53,6 +53,13 @@ struct named_flag {
 		SYSCALL_ARG(ssize_t, x, regs), \
 		slen \
 	)
+#define SYSCALL_STR(str, slen, n, regs) \
+	sprint_buffer( \
+		SYSCALL_ARG(char*, n, regs), \
+		str, \
+		strlen(SYSCALL_ARG(char*, n, regs)), \
+		slen \
+	)
 
 #define SYSCALL_FLAG(str, slen, names, n, regs) \
 	sprint_flags(str, slen, names, SYSCALL_ARG(int, n, regs))
@@ -280,6 +287,16 @@ static void print_syscall(
 			SYSCALL_RETVAL(int, regs)
 		);
 		break;
+	case SYS_open:
+		fprintf(
+			fp, "[ID %d]: open(%s, %d, %ld) = %d\n",
+			pid,
+			SYSCALL_STR(p_buffer, PRINT_BUFFER_SIZE, 0, regs),
+			SYSCALL_ARG(int,     1, regs),
+			SYSCALL_ARG(int64_t, 2, regs),
+			SYSCALL_RETVAL(int, regs)
+		);
+		break;
 	case SYS_close:
 		fprintf(
 			fp, "[ID %d]: close(%d) = %d\n",
@@ -311,6 +328,26 @@ static void print_syscall(
 			SYSCALL_ARG(int,      4, regs),
 			SYSCALL_ARG(uint64_t, 5, regs),
 			SYSCALL_RETVAL(void*,    regs)
+		);
+		break;
+	case SYS_munmap:
+		fprintf(
+			fp, "[ID %d]: munmap(%p, %lu) = %d\n",
+			pid,
+			SYSCALL_ARG(void*,    0, regs),
+			SYSCALL_ARG(uint64_t, 1, regs),
+			SYSCALL_RETVAL(int,      regs)
+		);
+		break;
+	case SYS_rt_sigaction:
+		fprintf(
+			fp, "[ID %d]: sigaction(%d, %p, %p, %ld) = %d\n",
+			pid,
+			SYSCALL_ARG(int,      0, regs),
+			SYSCALL_ARG(void*,    1, regs),
+			SYSCALL_ARG(void*,    2, regs),
+			SYSCALL_ARG(size_t,   3, regs),
+			SYSCALL_RETVAL(int,      regs)
 		);
 		break;
 	case SYS_ioctl:
@@ -351,12 +388,25 @@ static void print_syscall(
 			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
+	case SYS_futex:
+		fprintf(
+			fp, "[ID %d]: futex(%p, %d, %d, %p, %p, %d) = %d\n",
+			pid,
+			SYSCALL_ARG(void*,     0, regs),
+			SYSCALL_ARG(int,       1, regs),
+			SYSCALL_ARG(int,       2, regs),
+			SYSCALL_ARG(void*,     3, regs),
+			SYSCALL_ARG(void*,     4, regs),
+			SYSCALL_ARG(int,       5, regs),
+			SYSCALL_RETVAL(int,    regs)
+		);
+		break;
 	case SYS_openat:
 		fprintf(
-			fp, "[ID %d]: openat(%d, %p, %d, %d) = %d\n",
+			fp, "[ID %d]: openat(%d, %s, %d, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(int,       0, regs),
-			SYSCALL_ARG(void*,     1, regs),
+			SYSCALL_STR(p_buffer, PRINT_BUFFER_SIZE, 1, regs),
 			SYSCALL_ARG(int,       2, regs),
 			SYSCALL_ARG(int,       3, regs),
 			SYSCALL_RETVAL(int,    regs)
