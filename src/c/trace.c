@@ -165,6 +165,7 @@ static int trace_target(pid_t target_pid)
 	int options =
 		PTRACE_O_EXITKILL |
 		PTRACE_O_TRACESYSGOOD |
+		PTRACE_O_TRACEEXEC |
 		PTRACE_O_TRACECLONE;
 
 	waitpid(target_pid, &status, __WALL);
@@ -228,13 +229,18 @@ static int trace_target(pid_t target_pid)
 
 			state.data.pt_event = extract_ptrace_event(status);
 
-			if(state.data.pt_event == PTRACE_EVENT_CLONE) {
+			if(state.data.pt_event == PTRACE_EVENT_EXEC) {
+				state.status = PTRACE_EXEC_OCCURED;
+			} else if(state.data.pt_event == PTRACE_EVENT_CLONE) {
 				state.status = STARTED;
-				call_descriptor(&state);
+
 			} else {
 				state.status = PTRACE_EVENT_OCCURED_STOP;
-				call_descriptor(&state);
+
 			}
+
+			call_descriptor(&state);
+
 		} else if(is_signal_stop(status)) {
 			sig = WSTOPSIG(status);
 
@@ -246,7 +252,9 @@ static int trace_target(pid_t target_pid)
 
 		tracee_state_table_store(state_tab, state.pid, state.status);
 
-		if(ptrace(PTRACE_SYSCALL, state.pid, 0, sig) == -1) {
+		if(state.status == PTRACE_EXEC_OCCURED) {
+			ptrace(PTRACE_DETACH, state.pid, 0, 0);
+		} else if(ptrace(PTRACE_SYSCALL, state.pid, 0, sig) == -1) {
 			state.status = EXITED_UNEXPECTED;
 			call_descriptor(&state);
 

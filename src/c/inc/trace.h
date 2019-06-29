@@ -34,7 +34,8 @@ enum tracee_status {
 	SYSCALL_EXIT_STOP,
 	SIGNAL_DELIVERY_STOP,
 	GROUP_STOP,
-	PTRACE_EVENT_OCCURED_STOP
+	PTRACE_EVENT_OCCURED_STOP,
+	PTRACE_EXEC_OCCURED
 };
 /*****************************************************************************/
 struct tracee_state {
