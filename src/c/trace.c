@@ -96,7 +96,7 @@ static void modify_syscalls(struct tracee_state *state)
 		return;
 	}
 
-	if(state->pid != child_pid) {
+	if(regs->rax != child_pid) {
 		return;
 	}
 
