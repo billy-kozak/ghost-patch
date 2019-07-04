@@ -43,6 +43,7 @@
 #include <linux/ptrace.h>
 #include <stdbool.h>
 #include <sys/prctl.h>
+#include <sys/syscall.h>
 /******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
@@ -82,9 +83,31 @@ static bool is_group_stop(int status);
 static bool is_event_stop(int status);
 static bool is_signal_stop(int status);
 static int extract_ptrace_event(int status);
+static void modify_syscalls(struct tracee_state *state);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
+static void modify_syscalls(struct tracee_state *state)
+{
+	struct user_regs_struct *regs = &state->data.regs;
+	int syscall_no = regs->orig_rax;
+
+	if(state->status == SYSCALL_ENTER_STOP) {
+		return;
+	}
+
+	if(state->pid != child_pid) {
+		return;
+	}
+
+	if(syscall_no != SYS_getpid) {
+		return;
+	}
+
+	regs->rax = parent_pid;
+	ptrace(PTRACE_SETREGS, state->pid, 0, regs);
+}
+/*****************************************************************************/
 static void signal_forwarder_handler(
 	int signo, siginfo_t *info, void *ucontext
 ) {
@@ -211,6 +234,7 @@ static int trace_target(pid_t target_pid)
 			}
 
 			if(load_regs(&state) == 0) {
+				modify_syscalls(&state);
 				call_descriptor(&state);
 			} else {
 				state.status = EXITED_UNEXPECTED;

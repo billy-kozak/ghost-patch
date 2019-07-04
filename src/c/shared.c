@@ -34,11 +34,6 @@
 #include <setjmp.h>
 #include <sys/types.h>
 /******************************************************************************
-*                                    DATA                                     *
-******************************************************************************/
-static pid_t old_main_pid;
-static pid_t new_main_pid;
-/******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
 static bool am_py_trace(const char *progname);
@@ -61,11 +56,7 @@ static bool am_py_trace(const char *progname)
 static int fake_main(int argc, char **argv, char **envp)
 {
 	if(!am_py_trace(argv[0])) {
-		old_main_pid = syscall_getpid();
-
 		do_special_setup();
-
-		new_main_pid = syscall_getpid();
 	}
 
 	siglongjmp(jump_buffer, 1);
@@ -122,12 +113,6 @@ EXPORT int __libc_start_main(
 /*****************************************************************************/
 EXPORT pid_t getpid(void)
 {
-	pid_t real_pid = syscall_getpid();
-
-	if(real_pid == new_main_pid) {
-		return old_main_pid;
-	} else {
-		return real_pid;
-	}
+	return syscall_getpid();
 }
 /*****************************************************************************/

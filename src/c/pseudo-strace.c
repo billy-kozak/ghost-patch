@@ -428,7 +428,7 @@ static void* init(void *arg)
 static void* handle(void *arg, const struct tracee_state *state)
 {
 	if(state->status == STARTED) {
-		printf("[ID %d]: Started\n", state->pid);
+		fprintf(arg, "[ID %d]: Started\n", state->pid);
 	} else if(state->status == SYSCALL_ENTER_STOP) {
 
 	} else if(state->status == SYSCALL_EXIT_STOP) {
