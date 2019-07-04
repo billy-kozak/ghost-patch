@@ -207,6 +207,10 @@ static char *sprint_buffer(
 	char border = '"';
 	const char continuation[] = "\"...";
 
+	if(buffer_size < 0) {
+		return NULL;
+	}
+
 	space_size -= sizeof(border) + CHAR_ARR_STRLEN(continuation) + 1;
 
 	if(space_size < 0) {
@@ -256,7 +260,7 @@ static uint64_t syscall_arg(int n, const struct user_regs_struct *regs)
 	case 5:
 		return regs->r9;
 	default:
-		return 0;
+		return syscall_retval(regs);
 	}
 }
 /*****************************************************************************/
@@ -269,12 +273,13 @@ static void print_syscall(
 	switch(syscall_no) {
 	case SYS_read:
 		fprintf(
-			fp, "[ID %d]: read(%d, %p, %ld) = %d\n",
+			fp, "[ID %d]: read(%d, %p, %ld) = %d (%s)\n",
 			pid,
 			SYSCALL_ARG(int,     0, regs),
 			SYSCALL_ARG(void*,   1, regs),
 			SYSCALL_ARG(int64_t, 2, regs),
-			SYSCALL_RETVAL(int, regs)
+			SYSCALL_RETVAL(int, regs),
+			SYSCALL_BUF(p_buffer, PRINT_BUFFER_SIZE, 1, -1, regs)
 		);
 		break;
 	case SYS_write:
