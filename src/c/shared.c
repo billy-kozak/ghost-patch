@@ -34,6 +34,11 @@
 #include <setjmp.h>
 #include <sys/types.h>
 /******************************************************************************
+*                                    DATA                                     *
+******************************************************************************/
+static pid_t parent_pid;
+static pid_t child_pid;
+/******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
 static bool am_py_trace(const char *progname);
@@ -41,11 +46,15 @@ static sigjmp_buf jump_buffer;
 /*****************************************************************************/
 static void do_special_setup(void)
 {
+	struct trace_entities ents;
 	struct trace_descriptor descr = pseudo_strace_descriptor();
 
-	if(start_trace(&descr)) {
+	if(start_trace(&descr, &ents)) {
 		perror("Unable to start trace");
 	}
+
+	parent_pid = ents.parent;
+	child_pid = ents.child;
 }
 /*****************************************************************************/
 static bool am_py_trace(const char *progname)
@@ -113,6 +122,12 @@ EXPORT int __libc_start_main(
 /*****************************************************************************/
 EXPORT pid_t getpid(void)
 {
-	return syscall_getpid();
+	pid_t result = syscall_getpid();
+
+	if(result == child_pid) {
+		return parent_pid;
+	} else {
+		return result;
+	}
 }
 /*****************************************************************************/

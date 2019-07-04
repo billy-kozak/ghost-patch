@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 	if(DEBUG_MODE_NO_THREAD) {
 		struct trace_descriptor descr = pseudo_strace_descriptor();
 
-		start_trace(&descr);
+		start_trace(&descr, NULL);
 	} else {
 		setup_ld_preload();
 	}

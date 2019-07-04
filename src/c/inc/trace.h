@@ -58,9 +58,16 @@ struct trace_descriptor {
 	trace_handler_init init;
 	void *arg;
 };
+/*****************************************************************************/
+struct trace_entities {
+	pid_t parent;
+	pid_t child;
+};
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-int start_trace(const struct trace_descriptor *descr);
+int start_trace(
+	const struct trace_descriptor *descr, struct trace_entities *ents
+);
 /*****************************************************************************/
 #endif /* TRACE_H */

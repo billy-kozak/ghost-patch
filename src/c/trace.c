@@ -363,8 +363,9 @@ static bool is_signal_stop(int status)
 /******************************************************************************
 *                            FUNCTION DEFINITIONS                             *
 ******************************************************************************/
-int start_trace(const struct trace_descriptor *descr)
-{
+int start_trace(
+	const struct trace_descriptor *descr, struct trace_entities *ents
+) {
 	state_tab = tracee_state_table_init();
 
 	if(state_tab == NULL) {
@@ -386,6 +387,11 @@ int start_trace(const struct trace_descriptor *descr)
 
 	if(DEBUG_MODE_NO_THREAD == 0) {
 		while(wait_flag == 0);
+	}
+
+	if(ents != NULL) {
+		ents->parent = parent_pid;
+		ents->child = child_pid;
 	}
 
 	return 0;
