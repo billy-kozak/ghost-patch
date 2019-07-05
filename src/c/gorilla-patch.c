@@ -24,17 +24,98 @@
 #include "debug-modes.h"
 #include "trace.h"
 #include "pseudo-strace.h"
+#include "options.h"
 
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <getopt.h>
+#include <stdbool.h>
+#include <assert.h>
+/******************************************************************************
+*                                  CONSTANTS                                  *
+******************************************************************************/
+static const struct option GETOPT_OPTIONS[] = {
+	{"real-pid", no_argument, NULL, 'p'},
+	{"help", no_argument, NULL, 'h'},
+	{NULL, 0, 0, 0}
+};
+static const char OPT_STRING[] = "+hp";
+static const char HELP_TEXT[] =
+	"Start a thread in the target program to ptrace the target.\n"
+	"\n"
+	"Options:\n"
+	"-h,  --help     Display this help text\n"
+	"-p, --real-pid  Don't fake the process ID of the target process.\n"
+	"                This programs runs the target in a child process\n"
+	"                means that the output of the getpid() system call\n"
+	"                will appear to be inconsistent with the pid given\n"
+	"                by the parent process' call to clone() or fork().\n"
+	"                To get around this, by default this program\n"
+	"                intercepts the getpid() system call in order to\n"
+	"                make it appear that the target process has the pid\n"
+	"                of it's parent. This option disables this\n"
+	"                behaviour.\n";
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
 static void setup_ld_preload(void);
+static int target_args_pos(int argc, char **argv);
+static int parse_arguments(int argc, char **argv, struct prog_opts *aptr);
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
+static int parse_arguments(int argc, char **argv, struct prog_opts *aptr)
+{
+	struct prog_opts defaults = DEFAULT_PROG_ARGS;
+	int opt_ind = 0;
+	bool flag = true;
+
+	memcpy(aptr, &defaults, sizeof(*aptr));
+
+	while(flag) {
+		int c = getopt_long(
+			argc, argv, OPT_STRING, GETOPT_OPTIONS, &opt_ind
+		);
+		switch(c) {
+		case -1:
+			flag = false;
+			break;
+		case 'h':
+			printf("%s", HELP_TEXT);
+			exit(0);
+			break;
+		case 'p':
+			aptr->fake_pid = false;
+			break;
+		case '?':
+			flag = false;
+			return -1;
+		default:
+			assert(false);
+			flag = false;
+			return -1;
+		}
+	}
+
+	return 0;
+}
+/*****************************************************************************/
+static int target_args_pos(int argc, char **argv)
+{
+
+	for(int i = 1; i < argc; i++) {
+		if(argv[i][0] != '-') {
+			return i;
+		} else if(strcmp(argv[i], "--") == 0) {
+			return i != argc ? i + 1 : -1;
+		}
+	}
+
+	return -1;
+}
+/*****************************************************************************/
 static void setup_ld_preload(void)
 {
 	char *executable = this_executable();
@@ -57,8 +138,20 @@ static void setup_ld_preload(void)
 ******************************************************************************/
 int main(int argc, char **argv)
 {
-	if(argc <= 1) {
+	struct prog_opts parsed_args;
+	int targ_arg_index = target_args_pos(argc, argv);
+
+	if(parse_arguments(argc, argv, &parsed_args)) {
+		return -1;
+	}
+
+	if(targ_arg_index < 0) {
 		return 0;
+	}
+
+	if(set_options(&parsed_args)) {
+		perror(NULL);
+		return -1;
 	}
 
 	if(DEBUG_MODE_NO_THREAD) {
@@ -70,7 +163,7 @@ int main(int argc, char **argv)
 	}
 
 
-	if(execvp(argv[1], argv + 1)) {
+	if(execvp(argv[targ_arg_index], argv + targ_arg_index)) {
 		perror(NULL);
 	}
 

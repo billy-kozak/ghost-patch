@@ -19,88 +19,92 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
+#include "options.h"
+
 #include "str-utl.h"
 
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
 /******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
+*                                  CONSTANTS                                  *
 ******************************************************************************/
-const char *bool_to_string(bool val)
+static const char OPTION_ENV_VAR[] = "GORILLA_PATCH_OPTS";
+static const char FAKE_PID_FIELD[] = "fake_pid";
+/******************************************************************************
+*                                    DATA                                     *
+******************************************************************************/
+static bool options_loaded = false;
+static struct prog_opts cached_opts = DEFAULT_PROG_ARGS;
+/******************************************************************************
+*                            FUNCTION DEFINITIONS                             *
+******************************************************************************/
+int set_options(const struct prog_opts *opts)
 {
-	return val ? "true" : "false";
-}
-/*****************************************************************************/
-char *int_to_string(int i)
-{
-	size_t length = snprintf(NULL, 0, "%d", i);
-	char *buffer = calloc(length + 1, sizeof(*buffer));
+	int ret = 0;
+	char *env_str = NULL;
 
-	if(buffer == NULL) {
-		return NULL;
+	env_str = concatenate_strings(
+		FAKE_PID_FIELD,
+		"=",
+		bool_to_string(opts->fake_pid),
+		";"
+	);
+
+	if(env_str == NULL) {
+		ret = -1;
+		goto exit;
 	}
 
-	snprintf(buffer, length + 1, "%d", i);
+	if(setenv(OPTION_ENV_VAR, env_str, 1)) {
+		ret = -1;
+		goto exit;
+	}
 
-	return buffer;
+	memcpy(&cached_opts, opts, sizeof(cached_opts));
+
+	options_loaded = true;
+exit:
+	free(env_str);
+	return ret;
 }
 /*****************************************************************************/
-int strdcmp(const char *s1, const char *s2, char delim)
+int get_options(struct prog_opts *opts)
 {
-	for(size_t i = 0; true; i++) {
-		char c1 = s1[i] == '\0' ? delim : s1[i];
-		char c2 = s2[i] == '\0' ? delim : s2[i];
+	const char *env_str;
+	const char *sptr;
 
-		if((c1 == delim) || (c2 == delim)) {
-			return c1 - c2;
-		} else if(c1 != c2) {
-			return c1 - c2;
+	if(options_loaded) {
+		memcpy(opts, &cached_opts, sizeof(cached_opts));
+		return 0;
+	}
+
+	env_str = getenv(OPTION_ENV_VAR);
+	sptr = env_str;
+
+	if(env_str == NULL) {
+		memcpy(opts, &cached_opts, sizeof(cached_opts));
+		return -1;
+	}
+
+	while(*sptr != '\0') {
+		if(strdcmp(sptr, FAKE_PID_FIELD, '=') == 0) {
+			sptr += sizeof(FAKE_PID_FIELD);
+
+			if(strdcmp(sptr, "true", ';') == 0) {
+				opts->fake_pid = true;
+				sptr += sizeof("true");
+			} else if(strdcmp(sptr, "false", ';') == 0) {
+				opts->fake_pid = false;
+				sptr += sizeof("false");
+			} else {
+				return -1;
+			}
+		} else {
+			return -1;
 		}
 	}
 
-	return -1;
-}
-/*****************************************************************************/
-char *concatenate_n_strings(size_t count, ...)
-{
-	va_list argp;
-
-	char *ret = NULL;
-	char *writeptr = NULL;
-	size_t len = 1;
-
-	char **strings = calloc(count, sizeof(*strings));
-	if(strings == NULL) {
-		goto exit;
-	}
-
-	va_start(argp, count);
-
-	for(size_t i = 0; i < count; i++) {
-		strings[i] = va_arg(argp, char*);
-		len += strlen(strings[i]);
-	}
-
-	va_end(argp);
-
-	ret = calloc(len, sizeof(*ret));
-	if(ret == NULL) {
-		goto exit;
-	}
-	writeptr = ret;
-
-	for(size_t i = 0; i < count; i++) {
-		size_t len = strlen(strings[i]);
-
-		memcpy(writeptr, strings[i], len);
-		writeptr += len;
-	}
-
-exit:
-	free(strings);
-	return ret;
+	return 0;
 }
 /*****************************************************************************/

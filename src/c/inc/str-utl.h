@@ -22,6 +22,7 @@
 *                                  INCLUDES                                   *
 ******************************************************************************/
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "misc-macros.h"
 /******************************************************************************
@@ -29,11 +30,13 @@
 ******************************************************************************/
 char *concatenate_n_strings(size_t count, ...);
 char *int_to_string(int i);
+const char *bool_to_string(bool val);
+int strdcmp(const char *s1, const char *s2, char delim);
 /******************************************************************************
 *                                   MACROS                                    *
 ******************************************************************************/
 #define concatenate_strings(...) \
-	concatenate_n_strings(NUM_ARGS(char*, __VA_ARGS__), __VA_ARGS__)
+	concatenate_n_strings(NUM_ARGS(const char*, __VA_ARGS__), __VA_ARGS__)
 #define copy_string(s) concatenate_n_strings(1, s);
 /*****************************************************************************/
 #endif /* STR_UTL_H */

@@ -26,6 +26,7 @@
 #include "syscall-utl.h"
 #include "pseudo-strace.h"
 #include "application.h"
+#include "options.h"
 
 #include <dlfcn.h>
 #include <string.h>
@@ -38,6 +39,8 @@
 ******************************************************************************/
 static pid_t parent_pid;
 static pid_t child_pid;
+
+static struct prog_opts cached_opts;
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -52,6 +55,8 @@ static void do_special_setup(void)
 	if(start_trace(&descr, &ents)) {
 		perror("Unable to start trace");
 	}
+
+	get_options(&cached_opts);
 
 	parent_pid = ents.parent;
 	child_pid = ents.child;
@@ -124,7 +129,7 @@ EXPORT pid_t getpid(void)
 {
 	pid_t result = syscall_getpid();
 
-	if(result == child_pid) {
+	if(cached_opts.fake_pid && (result == child_pid)) {
 		return parent_pid;
 	} else {
 		return result;

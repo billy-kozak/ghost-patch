@@ -29,6 +29,7 @@
 #include "debug-modes.h"
 #include "tracee-state-table.h"
 #include "application.h"
+#include "options.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -64,6 +65,7 @@ static volatile int wait_flag;
 
 static struct trace_descriptor descriptor;
 static void *state_tab;
+static struct prog_opts cached_opts;
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
@@ -91,6 +93,10 @@ static void modify_syscalls(struct tracee_state *state)
 {
 	struct user_regs_struct *regs = &state->data.regs;
 	int syscall_no = regs->orig_rax;
+
+	if(!cached_opts.fake_pid) {
+		return;
+	}
 
 	if(state->status == SYSCALL_ENTER_STOP) {
 		return;
@@ -369,6 +375,10 @@ int start_trace(
 	state_tab = tracee_state_table_init();
 
 	if(state_tab == NULL) {
+		return 1;
+	}
+
+	if(get_options(&cached_opts)) {
 		return 1;
 	}
 
