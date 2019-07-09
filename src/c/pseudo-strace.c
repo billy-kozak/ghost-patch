@@ -89,6 +89,16 @@ static const struct named_flag MMAP_FLAGS[] = {
 	{"MAP_STACK", MAP_STACK},
 	{NULL}
 };
+
+static const struct named_flag MPROTECT_FLAGS[] = {
+	{"PROT_NONE", PROT_NONE},
+	{"PROT_READ", PROT_READ},
+	{"PROT_WRITE", PROT_WRITE},
+	{"PROT_EXEC", PROT_EXEC},
+	{"PROT_GROWSUP", PROT_GROWSUP},
+	{"PROT_GROWSDOWN", PROT_GROWSDOWN},
+	{NULL}
+};
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
@@ -267,7 +277,9 @@ static uint64_t syscall_arg(int n, const struct user_regs_struct *regs)
 static void print_syscall(
 	FILE *fp, pid_t pid, const struct user_regs_struct *regs
 ) {
-	char p_buffer[PRINT_BUFFER_SIZE];
+	char p_buffer_1[PRINT_BUFFER_SIZE];
+	char p_buffer_2[PRINT_BUFFER_SIZE];
+
 	int syscall_no = regs->orig_rax;
 
 	switch(syscall_no) {
@@ -279,7 +291,7 @@ static void print_syscall(
 			SYSCALL_ARG(void*,   1, regs),
 			SYSCALL_ARG(int64_t, 2, regs),
 			SYSCALL_RETVAL(int, regs),
-			SYSCALL_BUF(p_buffer, PRINT_BUFFER_SIZE, 1, -1, regs)
+			SYSCALL_BUF(p_buffer_1, PRINT_BUFFER_SIZE, 1, -1, regs)
 		);
 		break;
 	case SYS_write:
@@ -287,7 +299,7 @@ static void print_syscall(
 			fp, "[ID %d]: write(%d, %s, %ld) = %d\n",
 			pid,
 			SYSCALL_ARG(int,     0, regs),
-			SYSCALL_BUF(p_buffer, PRINT_BUFFER_SIZE, 1, 2, regs),
+			SYSCALL_BUF(p_buffer_1, PRINT_BUFFER_SIZE, 1, 2, regs),
 			SYSCALL_ARG(int64_t, 2, regs),
 			SYSCALL_RETVAL(int, regs)
 		);
@@ -296,7 +308,7 @@ static void print_syscall(
 		fprintf(
 			fp, "[ID %d]: open(%s, %d, %ld) = %d\n",
 			pid,
-			SYSCALL_STR(p_buffer, PRINT_BUFFER_SIZE, 0, regs),
+			SYSCALL_STR(p_buffer_1, PRINT_BUFFER_SIZE, 0, regs),
 			SYSCALL_ARG(int,     1, regs),
 			SYSCALL_ARG(int64_t, 2, regs),
 			SYSCALL_RETVAL(int, regs)
@@ -319,20 +331,45 @@ static void print_syscall(
 			SYSCALL_RETVAL(int, regs)
 		);
 		break;
+	case SYS_lseek:
+		fprintf(
+			fp, "[ID %d]: lseek(%u, %d, %d) = %d\n",
+			pid,
+			SYSCALL_ARG(uint32_t,   0, regs),
+			SYSCALL_ARG(int,        1, regs),
+			SYSCALL_ARG(int,        2, regs),
+			SYSCALL_RETVAL(int, regs)
+		);
 	case SYS_mmap:
 		fprintf(
-			fp, "[ID %d]: mmap(%p, %ld, %d, %s, %d, %lu) = %p\n",
+			fp, "[ID %d]: mmap(%p, %ld, %s, %s, %d, %lu) = %p\n",
 			pid,
 			SYSCALL_ARG(void*,    0, regs),
 			SYSCALL_ARG(int64_t,  1, regs),
-			SYSCALL_ARG(int,      2, regs),
 			SYSCALL_FLAG(
-				p_buffer, PRINT_BUFFER_SIZE,
+				p_buffer_1, PRINT_BUFFER_SIZE,
+				MPROTECT_FLAGS, 2, regs
+			),
+			SYSCALL_FLAG(
+				p_buffer_2, PRINT_BUFFER_SIZE,
 				MMAP_FLAGS, 3, regs
 			),
 			SYSCALL_ARG(int,      4, regs),
 			SYSCALL_ARG(uint64_t, 5, regs),
 			SYSCALL_RETVAL(void*,    regs)
+		);
+		break;
+	case SYS_mprotect:
+		fprintf(
+			fp, "[ID %d]: mprotect(%p, %ld, %s) = %d\n",
+			pid,
+			SYSCALL_ARG(void*,    0, regs),
+			SYSCALL_ARG(size_t,   1, regs),
+			SYSCALL_FLAG(
+				p_buffer_1, PRINT_BUFFER_SIZE,
+				MPROTECT_FLAGS, 2, regs
+			),
+			SYSCALL_RETVAL(int,      regs)
 		);
 		break;
 	case SYS_munmap:
@@ -365,10 +402,39 @@ static void print_syscall(
 			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
+	case SYS_access:
+		fprintf(
+			fp, "[ID %d]: access(%s, %d) = %d\n",
+			pid,
+			SYSCALL_STR(p_buffer_1, PRINT_BUFFER_SIZE, 0, regs),
+			SYSCALL_ARG(int,       1, regs),
+			SYSCALL_RETVAL(int,    regs)
+		);
+		break;
 	case SYS_getpid:
 		fprintf(
 			fp, "[ID %d]: getpid() = %d\n",
 			pid,
+			SYSCALL_RETVAL(int,    regs)
+		);
+		break;
+	case SYS_socket:
+		fprintf(
+			fp, "[ID %d]: socket(%d, %d, %d) = %d\n",
+			pid,
+			SYSCALL_ARG(int,       0, regs),
+			SYSCALL_ARG(int,       1, regs),
+			SYSCALL_ARG(int,       2, regs),
+			SYSCALL_RETVAL(int,    regs)
+		);
+		break;
+	case SYS_connect:
+		fprintf(
+			fp, "[ID %d]: connect(%d, %p, %d) = %d\n",
+			pid,
+			SYSCALL_ARG(int,       0, regs),
+			SYSCALL_ARG(void*,     1, regs),
+			SYSCALL_ARG(int,       2, regs),
 			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
@@ -393,6 +459,13 @@ static void print_syscall(
 			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
+	case SYS_geteuid:
+		fprintf(
+			fp, "[ID %d]: geteuid() = %d\n",
+			pid,
+			SYSCALL_RETVAL(int,    regs)
+		);
+		break;
 	case SYS_futex:
 		fprintf(
 			fp, "[ID %d]: futex(%p, %d, %d, %p, %p, %d) = %d\n",
@@ -411,7 +484,7 @@ static void print_syscall(
 			fp, "[ID %d]: openat(%d, %s, %d, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(int,       0, regs),
-			SYSCALL_STR(p_buffer, PRINT_BUFFER_SIZE, 1, regs),
+			SYSCALL_STR(p_buffer_1, PRINT_BUFFER_SIZE, 1, regs),
 			SYSCALL_ARG(int,       2, regs),
 			SYSCALL_ARG(int,       3, regs),
 			SYSCALL_RETVAL(int,    regs)
