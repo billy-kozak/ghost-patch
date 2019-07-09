@@ -126,12 +126,20 @@ static char *sprint_flags(
 static char *sprint_flags(
 	char *str, ssize_t size, const struct named_flag *names, int flag
 ) {
+	const char zero[] = "0";
 	const char continuation[] = "|...";
 	char *p = str;
 
+	if(size <= sizeof(zero)) {
+		return NULL;
+	} else if(flag == 0) {
+		memcpy(p, zero, sizeof(zero));
+		return str;
+	}
+
 	size -= sizeof(continuation);
 
-	if(size < 0) {
+	if(size <= 0 ) {
 		return NULL;
 	}
 
