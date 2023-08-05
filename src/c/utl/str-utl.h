@@ -16,29 +16,41 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef STR_UTL_H
+#define STR_UTL_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "path-utl.h"
+#include <stdlib.h>
+#include <stdbool.h>
 
-#include <utl/str-utl.h>
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdio.h>
+#include "misc-macros.h"
+/******************************************************************************
+*                                    TYPES                                    *
+******************************************************************************/
+struct lstring {
+	size_t len;
+	char *str;
+};
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-char *this_executable(void)
-{
-	char *str_pid = int_to_string(getpid());
-	char *sym_path = concatenate_strings("/proc/", str_pid, "/exe");
-	char *exe_path = safe_resolve_symlink(sym_path);
-
-	free(str_pid);
-	free(sym_path);
-
-	return exe_path;
-}
+char *concatenate_n_strings(size_t count, ...);
+char *int_to_string(int i);
+const char *bool_to_string(bool val);
+int strdcmp(const char *s1, const char *s2, char delim);
+struct lstring str_utl_tok_and_sqz(
+	const char *s,
+	size_t len,
+	char delim,
+	const char **saveptr
+);
+int lstring_cmp(const struct lstring *ls, const char *s);
+/******************************************************************************
+*                                   MACROS                                    *
+******************************************************************************/
+#define concatenate_strings(...) \
+	concatenate_n_strings(NUM_ARGS(const char*, __VA_ARGS__), __VA_ARGS__)
+#define copy_string(s) concatenate_n_strings(1, s);
 /*****************************************************************************/
+#endif /* STR_UTL_H */

@@ -16,29 +16,24 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef GORILLA_MALLOC_H
+#define GORILLA_MALLOC_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "path-utl.h"
-
-#include <utl/str-utl.h>
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdio.h>
+#include <stdlib.h>
+/******************************************************************************
+*                                    TYPES                                    *
+******************************************************************************/
+struct gorilla_heap;
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-char *this_executable(void)
-{
-	char *str_pid = int_to_string(getpid());
-	char *sym_path = concatenate_strings("/proc/", str_pid, "/exe");
-	char *exe_path = safe_resolve_symlink(sym_path);
-
-	free(str_pid);
-	free(sym_path);
-
-	return exe_path;
-}
+void *gorilla_malloc(struct gorilla_heap *heap, size_t size);
+void gorilla_free(struct gorilla_heap *heap, void *ptr);
+void *gorilla_realloc(struct gorilla_heap *heap, void *ptr, size_t size);
+void *gorilla_malloc_check_leaks(struct gorilla_heap *heap, void **ptr);
+int gorilla_heap_destroy(struct gorilla_heap *heap);
+struct gorilla_heap *gorilla_heap_init(void);
 /*****************************************************************************/
+#endif /* GORILLA_MALLOC_H */

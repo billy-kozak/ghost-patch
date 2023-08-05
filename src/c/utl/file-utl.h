@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the gorilla-patch program                              *
 *                                                                             *
@@ -16,29 +16,57 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef FILE_UTL_H
+#define FILE_UTL_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "path-utl.h"
+#include <stdlib.h>
+/******************************************************************************
+*                                    TYPES                                    *
+******************************************************************************/
+struct file_utl_reader_state {
+	char *data;
+	size_t len;
 
-#include <utl/str-utl.h>
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdio.h>
+	size_t buf_size;
+	size_t buf_used;
+	char *buf;
+	int fd;
+};
+/******************************************************************************
+*                                   DEFINES                                   *
+******************************************************************************/
+#define FILE_UTL_READER_EOF -1
+#define FILE_UTL_ERR_IO_ERR -2
+#define FILE_UTL_ERR_TOO_SMALL -3
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-char *this_executable(void)
-{
-	char *str_pid = int_to_string(getpid());
-	char *sym_path = concatenate_strings("/proc/", str_pid, "/exe");
-	char *exe_path = safe_resolve_symlink(sym_path);
-
-	free(str_pid);
-	free(sym_path);
-
-	return exe_path;
-}
+/**
+ * Initialize reader state
+ *
+ * @param fd - file descriptor to read from
+ * @param line_buffer - buffer to store lines
+ * @param buf_size - size of the line buffer
+**/
+void file_utl_reader_init(
+	struct file_utl_reader_state *state,
+	int fd,
+	char *line_buffer,
+	size_t buf_size
+);
+/**
+ * Read lines from file without using stdio
+ *
+ * Lines can be retrieved from state->data and have a size of state->len.
+ *
+ * @param state - represents the state of the reader and also contains results.
+ * 	Must have been initialized by file_util_reader_init.
+ *
+ * @return int - The number of bytes consumed, FILE_UTL_READER_EOF or an error
+ * 	code.
+**/
+int file_utl_read_line(struct file_utl_reader_state *state);
 /*****************************************************************************/
+#endif /* FILE_UTL_H */

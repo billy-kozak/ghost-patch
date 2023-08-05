@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the gorilla-patch program                              *
 *                                                                             *
@@ -16,29 +16,44 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef MATH_UTL_H
+#define MATH_UTL_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "path-utl.h"
-
-#include <utl/str-utl.h>
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdio.h>
+#include <stdint.h>
 /******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
+*                                   MACROS                                    *
 ******************************************************************************/
-char *this_executable(void)
+#define DIV_ROUND_UP(n, d) (((n) / (d)) + (((n) % (d)) ? 1 : 0))
+/******************************************************************************
+*                              INLINE_FUNCTIONS                               *
+******************************************************************************/
+static inline uint64_t align_up_unsigned(uint64_t size, uint64_t align)
 {
-	char *str_pid = int_to_string(getpid());
-	char *sym_path = concatenate_strings("/proc/", str_pid, "/exe");
-	char *exe_path = safe_resolve_symlink(sym_path);
-
-	free(str_pid);
-	free(sym_path);
-
-	return exe_path;
+	if((size % align) == 0) {
+		return (size / align) * align;
+	} else {
+		return ((size / align) * (align)) + align;
+	}
 }
 /*****************************************************************************/
+static inline uint64_t align_down_unsigned(uint64_t size, uint64_t align)
+{
+	return (size / align) * align;
+}
+/*****************************************************************************/
+static inline int64_t math_utl_round(double d)
+{
+	double floor = (double)((int64_t)d);
+	double frac = d - floor;
+
+	if(frac >= 0.5) {
+		return ((int64_t)(floor)) + 1;
+	} else {
+		return (int64_t)(floor);
+	}
+}
+/*****************************************************************************/
+#endif /* MATH_UTL_H */
+

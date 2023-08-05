@@ -110,7 +110,11 @@ no_thread: debug
 
 tests: CFLAGS += -DDEBUG=1 -g -O0
 tests: $(BUILD_TEST_DIR)/.dir_dummy
-tests: optomized $(TEST_EXES)
+tests: debug $(TEST_EXES)
+
+fast_tests: CFLAGS += -DNDEBUG=1 -g -Os
+fast_tests: $(BUILD_TEST_DIR)/.dir_dummy
+fast_tests: optomized $(TEST_EXES)
 
 debug: CFLAGS += -DDEBUG=1 -g -O0
 debug: $(BINARY)

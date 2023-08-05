@@ -20,11 +20,12 @@
 *                                  INCLUDES                                   *
 ******************************************************************************/
 #include "proc-utl.h"
-#include "str-utl.h"
 #include "debug-modes.h"
 #include "trace.h"
 #include "pseudo-strace.h"
 #include "options.h"
+
+#include <utl/str-utl.h>
 
 #include <unistd.h>
 #include <stdlib.h>

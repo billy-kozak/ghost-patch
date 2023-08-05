@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the gorilla-patch program                              *
 *                                                                             *
@@ -19,92 +19,94 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "options.h"
+#include "file-utl.h"
 
-#include <utl/str-utl.h>
-
-#include <stdbool.h>
-#include <string.h>
+#include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 /******************************************************************************
-*                                  CONSTANTS                                  *
+*                              STATIC FUNCTIONS                               *
 ******************************************************************************/
-static const char OPTION_ENV_VAR[] = "GORILLA_PATCH_OPTS";
-static const char FAKE_PID_FIELD[] = "fake_pid";
-/******************************************************************************
-*                                    DATA                                     *
-******************************************************************************/
-static bool options_loaded = false;
-static struct prog_opts cached_opts = DEFAULT_PROG_ARGS;
+static char* find_eol(char *str, size_t len)
+{
+	for(int i = 0; i < len; i++) {
+		if(str[i] == '\n') {
+			return str + i;
+		}
+	}
+	return NULL;
+}
 /******************************************************************************
 *                            FUNCTION DEFINITIONS                             *
 ******************************************************************************/
-int set_options(const struct prog_opts *opts)
-{
-	int ret = 0;
-	char *env_str = NULL;
-
-	env_str = concatenate_strings(
-		FAKE_PID_FIELD,
-		"=",
-		bool_to_string(opts->fake_pid),
-		";"
-	);
-
-	if(env_str == NULL) {
-		ret = -1;
-		goto exit;
-	}
-
-	if(setenv(OPTION_ENV_VAR, env_str, 1)) {
-		ret = -1;
-		goto exit;
-	}
-
-	memcpy(&cached_opts, opts, sizeof(cached_opts));
-
-	options_loaded = true;
-exit:
-	free(env_str);
-	return ret;
+void file_utl_reader_init(
+	struct file_utl_reader_state *state,
+	int fd,
+	char *line_buffer,
+	size_t buf_size
+) {
+	state->fd = fd;
+	state->buf = line_buffer;
+	state->buf_size = buf_size;
+	state->len = 0;
+	state->buf_used = 0;
+	state->data = line_buffer;
 }
 /*****************************************************************************/
-int get_options(struct prog_opts *opts)
+int file_utl_read_line(struct file_utl_reader_state *state)
 {
-	const char *env_str;
-	const char *sptr;
+	char *start_of_used = state->data + state->len;
+	size_t len_of_used = state->buf_used - (start_of_used - state->buf);
 
-	if(options_loaded) {
-		memcpy(opts, &cached_opts, sizeof(cached_opts));
-		return 0;
-	}
+	assert(len_of_used >= 0);
 
-	env_str = getenv(OPTION_ENV_VAR);
-	sptr = env_str;
+	char *eol = find_eol(start_of_used, len_of_used);
 
-	if(env_str == NULL) {
-		memcpy(opts, &cached_opts, sizeof(cached_opts));
-		return -1;
-	}
-
-	while(*sptr != '\0') {
-		if(strdcmp(sptr, FAKE_PID_FIELD, '=') == 0) {
-			sptr += sizeof(FAKE_PID_FIELD);
-
-			if(strdcmp(sptr, "true", ';') == 0) {
-				opts->fake_pid = true;
-				sptr += sizeof("true");
-			} else if(strdcmp(sptr, "false", ';') == 0) {
-				opts->fake_pid = false;
-				sptr += sizeof("false");
-			} else {
-				return -1;
-			}
-		} else {
-			return -1;
+	if(eol == NULL) {
+		if(state->buf_used != 0) {
+			memmove(state->buf, state->data, len_of_used);
 		}
+		char *start_of_unused = state->buf + len_of_used;
+		size_t remaining = state->buf_size - len_of_used;
+
+		assert(remaining >= 0);
+
+		if(remaining == 0) {
+			state->buf_used = len_of_used;
+			state->len = len_of_used;
+			state->data = state->buf;
+			return FILE_UTL_ERR_TOO_SMALL;
+		}
+
+		ssize_t ret = read(state->fd, start_of_unused, remaining);
+
+		if( ret < 0 ) {
+			return FILE_UTL_ERR_IO_ERR;
+		}
+
+		state->buf_used = len_of_used + ret;
+		state->data = state->buf;
+
+		if(ret == 0 && len_of_used == 0) {
+			return FILE_UTL_READER_EOF;
+		} else if(ret == 0 && len_of_used != 0) {
+			state->len = len_of_used;
+			return len_of_used;
+		} else {
+			eol = find_eol(state->data, state->buf_used);
+			if(eol == NULL) {
+				state->len = state->buf_used;
+				return FILE_UTL_ERR_TOO_SMALL;
+			}
+		}
+	} else {
+		state->data = start_of_used;
 	}
 
-	return 0;
+	state->len = eol + 1 - state->data;
+	assert(state->len != 0);
+
+	return state->len;
 }
 /*****************************************************************************/

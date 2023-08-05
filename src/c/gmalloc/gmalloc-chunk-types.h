@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023 Billy Kozak                                             *
 *                                                                             *
 * This file is part of the gorilla-patch program                              *
 *                                                                             *
@@ -16,29 +16,44 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef GMALLOC_CHUNK_TYPES_H
+#define GMALLOC_CHUNK_TYPES_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "path-utl.h"
+#include <utl/math-utl.h>
 
-#include <utl/str-utl.h>
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 /******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
+*                                   DEFINES                                   *
 ******************************************************************************/
-char *this_executable(void)
-{
-	char *str_pid = int_to_string(getpid());
-	char *sym_path = concatenate_strings("/proc/", str_pid, "/exe");
-	char *exe_path = safe_resolve_symlink(sym_path);
+/* min size is size of the payload union, plus a sizeof(size_t) so we can
+ * write the footer size */
+#define MIN_CHUNK_DATA_SIZE ((\
+	sizeof(size_t) > sizeof(struct link) ? \
+	sizeof(size_t) : \
+	sizeof(struct link) \
+) + sizeof(size_t))
 
-	free(str_pid);
-	free(sym_path);
+#define MIN_CHUNK_DATA_WORDS DIV_ROUND_UP(MIN_CHUNK_DATA_SIZE, sizeof(size_t))
+/******************************************************************************
+*                                    TYPES                                    *
+******************************************************************************/
+struct link {
+	struct link *fwd;
+	struct link *bck;
+};
 
-	return exe_path;
-}
+struct chunk {
+	size_t flags;
+
+	union {
+		struct link link;
+		size_t data[MIN_CHUNK_DATA_WORDS];
+		uint8_t bytes[MIN_CHUNK_DATA_WORDS * sizeof(size_t)];
+	} payload;
+};
+
 /*****************************************************************************/
+#endif /* GMALLOC_CHUNK_TYPES_H */
