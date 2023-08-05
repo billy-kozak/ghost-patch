@@ -39,10 +39,13 @@ BUILD_DIR   := obj
 EXE_DIR     := bin
 ASM_GEN_DIR := asm_gen
 
+BUILD_TEST_DIR := $(BUILD_DIR)/tests
+TEST_EXE_DIR := $(EXE_DIR)/tests
+
 SRC_TREE += src
 
-INC_DIRS += src/c/inc
-CSRC_DIRS += src/c
+INC_DIRS += src/c/inc src/test/ src/c
+CSRC_DIRS += $(shell find src/c -type d)
 ASM_DIRS += src/asm
 ###############################################################################
 #                                 BUILD FILES                                 #
@@ -66,9 +69,25 @@ BINARY := $(EXE_DIR)/$(PROJECT)
 
 INCLUDES += $(foreach f,$(INC_DIRS),-I$(f))
 
+TEST_SRC_DIRS = src/test/picounit src/test/suites/
+
+TEST_SRC += $(foreach f, $(TEST_SRC_DIRS), $(notdir $(wildcard $(f)/*.c)))
+DEP_FILES += $(foreach f,$(TEST_SRC),$(BUILD_DIR)/$(patsubst %.c,%.d,$(f)))
+
+TEST_SUITES = $(foreach f, $(wildcard src/test/suites/*.c), $(notdir $(f)))
+TEST_EXES = $(foreach f,\
+	$(TEST_SUITES),\
+	$(TEST_EXE_DIR)/$(patsubst %.c,%, $(f))\
+)
+
+TEST_OBJS = $(filter-out %/shared.o %/gorilla-patch.o, $(OBJ_FILES))
+TEST_OBJS += $(BUILD_DIR)/picounit.o
+
+
 CFLAGS += $(INCLUDES)
 
 vpath %.c $(CSRC_DIRS)
+vpath %.c $(TEST_SRC_DIRS)
 vpath %.S $(ASM_DIRS)
 
 C_DIRS += $(CSRC_DIRS) $(INC_DIRS)
@@ -89,7 +108,11 @@ no_trace: debug
 no_thread: CFLAGS += -DDEBUG_MODE_NO_THREAD
 no_thread: debug
 
-debug: CFLAGS += -DDEBUG=1 -g
+tests: CFLAGS += -DDEBUG=1 -g -O0
+tests: $(BUILD_TEST_DIR)/.dir_dummy
+tests: optomized $(TEST_EXES)
+
+debug: CFLAGS += -DDEBUG=1 -g -O0
 debug: $(BINARY)
 
 optomized: CFLAGS += -DNDEBUG=1 -march=native -Os -flto
@@ -124,8 +147,12 @@ $(ASM_GEN): $(ASM_GEN_DIR)/%.s : %.c | $(ASM_GEN_DIR)/.dir_dummy
 $(BINARY): $(OBJ_FILES) | $(EXE_DIR)/.dir_dummy
 	$(LD) $(LDFLAGS) -pie  $^ $(LIBS) -o $@
 
+$(TEST_EXE_DIR)/%: $(BUILD_DIR)/%.o $(TEST_OBJS) | $(TEST_EXE_DIR)/.dir_dummy
+	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
+
+
 clean:
-	rm -f $(CLEAN_FILES)
+	rm -rf $(CLEAN_FILES)
 
 dir_clean:
 	rm -rf $(BUILD_DIR) $(EXE_DIR) $(ASM_GEN_DIR)
