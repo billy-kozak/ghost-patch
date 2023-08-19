@@ -2,7 +2,7 @@
 ###############################################################################
 # Copyright (C) 2019  Billy Kozak                                             #
 #                                                                             #
-# This file is part of the gorilla-patch program                              #
+# This file is part of the ghost-patch program                                #
 #                                                                             #
 # This program is free software: you can redistribute it and/or modify        #
 # it under the terms of the GNU Lesser General Public License as published by #
@@ -29,7 +29,7 @@ LDFLAGS += -Wall
 CFLAGS += -fvisibility=hidden -fPIC
 LDFLAGS += -fvisibility=hidden -fPIC
 
-PROJECT := gorilla-patch
+PROJECT := ghost-patch
 
 NO_DEPS_TARGETS += clean directories dir_clean
 ###############################################################################
@@ -80,7 +80,7 @@ TEST_EXES = $(foreach f,\
 	$(TEST_EXE_DIR)/$(patsubst %.c,%, $(f))\
 )
 
-TEST_OBJS = $(filter-out %/shared.o %/gorilla-patch.o, $(OBJ_FILES))
+TEST_OBJS = $(filter-out %/shared.o %/ghost-patch.o, $(OBJ_FILES))
 TEST_OBJS += $(BUILD_DIR)/picounit.o
 
 

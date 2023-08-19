@@ -1,7 +1,7 @@
 /******************************************************************************
 * Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
-* This file is part of the gorilla-patch program                              *
+* This file is part of the ghost-patch program                                *
 *                                                                             *
 * This program is free software: you can redistribute it and/or modify        *
 * it under the terms of the GNU Lesser General Public License as published by *
@@ -19,7 +19,7 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "gmalloc/gorilla-malloc.h"
+#include "gmalloc/ghost-malloc.h"
 
 #include <picounit/picounit.h>
 #include <utl/math-utl.h>
@@ -72,13 +72,13 @@ static bool mem_test(void *ptr, size_t size)
 }
 /*****************************************************************************/
 static struct marked_mem* malloc_and_mark(
-	struct gorilla_heap *heap, size_t size
+	struct ghost_heap *heap, size_t size
 ) {
 	if(size < sizeof(struct marked_mem)) {
 		return NULL;
 	}
 
-	struct marked_mem *mem = gorilla_malloc(heap, size);
+	struct marked_mem *mem = ghost_malloc(heap, size);
 
 	mem->len = (size - sizeof(struct marked_mem)) / sizeof(void*);
 
@@ -90,13 +90,13 @@ static struct marked_mem* malloc_and_mark(
 }
 /*****************************************************************************/
 static struct marked_mem* realloc_and_remark(
-	struct gorilla_heap *heap, struct marked_mem *mem, size_t size
+	struct ghost_heap *heap, struct marked_mem *mem, size_t size
 ) {
 	if(size < sizeof(struct marked_mem)) {
 		return NULL;
 	}
 
-	struct marked_mem *new = gorilla_realloc(heap, mem, size);
+	struct marked_mem *new = ghost_realloc(heap, mem, size);
 
 	new->len = (size - sizeof(struct marked_mem)) / sizeof(void*);
 
@@ -120,11 +120,11 @@ static bool check_marked_mem(struct marked_mem *mem)
 }
 /*****************************************************************************/
 static bool free_and_check_marked_mem(
-	struct gorilla_heap *heap,
+	struct ghost_heap *heap,
 	struct marked_mem *mem
 ) {
 	bool ret = check_marked_mem(mem);
-	gorilla_free(heap, mem);
+	ghost_free(heap, mem);
 
 	return ret;
 }
@@ -180,40 +180,40 @@ static int random_allocation_slot(struct drand48_data *rng)
 ******************************************************************************/
 static bool test_can_init(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 	PUNIT_ASSERT(heap != NULL);
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 
 	return true;
 }
 /*****************************************************************************/
 static bool test_alloc_small(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 
-	void *data = gorilla_malloc(heap, 256);
+	void *data = ghost_malloc(heap, 256);
 	PUNIT_ASSERT(mem_test(data, 256));
 
-	gorilla_free(heap, data);
+	ghost_free(heap, data);
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 
 	return true;
 }
 /*****************************************************************************/
 static bool test_can_merge(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 
 	/* both b1 and b2 should be split from the original chunk */
-	void *b1 = gorilla_malloc(heap, 128);
-	void *b2 = gorilla_malloc(heap, 128);
+	void *b1 = ghost_malloc(heap, 128);
+	void *b2 = ghost_malloc(heap, 128);
 
 	/* once freed, they should be merged back together after the first
-	 * call to gorilla_malloc */
-	gorilla_free(heap, b1);
-	gorilla_free(heap, b2);
+	 * call to ghost_malloc */
+	ghost_free(heap, b1);
+	ghost_free(heap, b2);
 
 	bool ret = false;
 
@@ -225,17 +225,17 @@ static bool test_can_merge(void)
 		/* this will continue to split from, and consume the original
 		 * chunk until such time as the orignal chunk is too small,
 		 * at which point, the merged b1+b2 should be reused */
-		allocations[i] = gorilla_malloc(heap, 128);
+		allocations[i] = ghost_malloc(heap, 128);
 		if(allocations[i] == b1) {
 			ret = true;
 			break;
 		}
 	}
 	for(i = (i < 128) ? i : 127; i >= 0; i--) {
-		gorilla_free(heap, allocations[i]);
+		ghost_free(heap, allocations[i]);
 	}
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 
 	return ret;
 
@@ -243,105 +243,105 @@ static bool test_can_merge(void)
 /*****************************************************************************/
 static bool test_alloc_on_top(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 
-	void *data = gorilla_malloc(heap, page_size * 2);
+	void *data = ghost_malloc(heap, page_size * 2);
 	PUNIT_ASSERT(mem_test(data, page_size * 2));
 
-	gorilla_free(heap, data);
+	ghost_free(heap, data);
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 
 	return true;
 }
 /*****************************************************************************/
 static bool test_pure_mmap_alloc(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
-	void *data = gorilla_malloc(heap, page_size * 8);
+	struct ghost_heap *heap = ghost_heap_init();
+	void *data = ghost_malloc(heap, page_size * 8);
 	PUNIT_ASSERT(mem_test(data, page_size * 8));
 
-	gorilla_free(heap, data);
+	ghost_free(heap, data);
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 
 	return true;
 }
 /*****************************************************************************/
 static bool test_realloc_simple_growth(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 
-	void *data = gorilla_malloc(heap, 128);
-	void *grow = gorilla_realloc(heap, data, 256);
+	void *data = ghost_malloc(heap, 128);
+	void *grow = ghost_realloc(heap, data, 256);
 
 	PUNIT_ASSERT(grow != NULL);
 	PUNIT_ASSERT(grow == data);
 
 	PUNIT_ASSERT(mem_test(data, 256));
 
-	gorilla_free(heap, grow);
+	ghost_free(heap, grow);
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 
 	return true;
 }
 /*****************************************************************************/
 static bool test_realloc_shrink(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 
-	uint8_t *data = gorilla_malloc(heap, page_size);
-	uint8_t *shrink = gorilla_realloc(heap, data, 128);
+	uint8_t *data = ghost_malloc(heap, page_size);
+	uint8_t *shrink = ghost_realloc(heap, data, 128);
 
 	PUNIT_ASSERT(shrink != NULL);
 	PUNIT_ASSERT(shrink == data);
 
 	PUNIT_ASSERT(mem_test(data, 128));
 
-	uint8_t *next = gorilla_malloc(heap, 128);
+	uint8_t *next = ghost_malloc(heap, 128);
 
 	PUNIT_ASSERT(next < (data + page_size));
 
-	gorilla_free(heap, shrink);
-	gorilla_free(heap, next);
+	ghost_free(heap, shrink);
+	ghost_free(heap, next);
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 
 	return true;
 }
 /*****************************************************************************/
 static bool test_realloc_mmap_grow(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 
-	uint8_t *data = gorilla_malloc(heap, page_size);
-	uint8_t *grow = gorilla_realloc(heap, data, page_size * 4);
+	uint8_t *data = ghost_malloc(heap, page_size);
+	uint8_t *grow = ghost_realloc(heap, data, page_size * 4);
 
 	PUNIT_ASSERT(grow != NULL);
 	PUNIT_ASSERT(grow == data);
 
 	PUNIT_ASSERT(mem_test(grow, page_size * 4));
 
-	gorilla_free(heap, grow);
+	ghost_free(heap, grow);
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 
 	return true;
 }
 /*****************************************************************************/
 static bool test_mem_move_realloc(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 
-	uint8_t *d1 = gorilla_malloc(heap, 128);
-	uint8_t *d2 = gorilla_malloc(heap, 128);
+	uint8_t *d1 = ghost_malloc(heap, 128);
+	uint8_t *d2 = ghost_malloc(heap, 128);
 
 	for(int i = 0; i < 128; i++) {
 		d1[i] = i & 0xFF;
 	}
 
-	uint8_t *grow = gorilla_realloc(heap, d1, 256);
+	uint8_t *grow = ghost_realloc(heap, d1, 256);
 
 	PUNIT_ASSERT(d1 != grow);
 
@@ -349,16 +349,16 @@ static bool test_mem_move_realloc(void)
 		PUNIT_ASSERT(grow[i] == (i & 0xFF));
 	}
 
-	gorilla_free(heap, grow);
-	gorilla_free(heap, d2);
+	ghost_free(heap, grow);
+	ghost_free(heap, d2);
 
-	PUNIT_ASSERT(gorilla_heap_destroy(heap) == 0);
+	PUNIT_ASSERT(ghost_heap_destroy(heap) == 0);
 return true;
 }
 /*****************************************************************************/
 static bool test_random_allocations(void)
 {
-	struct gorilla_heap *heap = gorilla_heap_init();
+	struct ghost_heap *heap = ghost_heap_init();
 
 	struct drand48_data rng;
 	srand48_r(TEST_RNG_SEED, &rng);
@@ -402,8 +402,8 @@ static bool test_random_allocations(void)
 		}
 	}
 
-	PUNIT_ASSERT(gorilla_malloc_check_leaks(heap, NULL) == NULL);
-	gorilla_heap_destroy(heap);
+	PUNIT_ASSERT(ghost_malloc_check_leaks(heap, NULL) == NULL);
+	ghost_heap_destroy(heap);
 
 	return true;
 }

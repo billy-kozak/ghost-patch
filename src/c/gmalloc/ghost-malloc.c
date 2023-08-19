@@ -1,7 +1,7 @@
 /******************************************************************************
 * Copyright (C) 2019  Billy Kozak                                             *
 *                                                                             *
-* This file is part of the gorilla-patch program                              *
+* This file is part of the ghost-patch program                                *
 *                                                                             *
 * This program is free software: you can redistribute it and/or modify        *
 * it under the terms of the GNU Lesser General Public License as published by *
@@ -19,7 +19,7 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "gorilla-malloc.h"
+#include "ghost-malloc.h"
 
 #include "gmalloc-chunk.h"
 #include "gmalloc-chunk-list.h"
@@ -47,7 +47,7 @@
 )
 
 #define HEAP_OVERHEAD_SIZE ( \
-	sizeof(struct gorilla_heap) - \
+	sizeof(struct ghost_heap) - \
 	sizeof(((struct chunk*)(NULL))->payload) \
 )
 
@@ -61,7 +61,7 @@ static int page_size;
 /******************************************************************************
 *                                    TYPES                                    *
 ******************************************************************************/
-struct gorilla_heap {
+struct ghost_heap {
 	struct chunk *top_chunk;
 	size_t top_flags;
 
@@ -75,24 +75,24 @@ struct gorilla_heap {
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
 static size_t min_to_map(size_t target);
-static void heap_maintenance(struct gorilla_heap *heap);
-static void *pure_mmap_alloc(struct gorilla_heap *heap, size_t size);
-static void *normal_malloc_alloc(struct gorilla_heap *heap, size_t size);
-static struct chunk *bin_pop(struct gorilla_heap *heap, size_t size);
+static void heap_maintenance(struct ghost_heap *heap);
+static void *pure_mmap_alloc(struct ghost_heap *heap, size_t size);
+static void *normal_malloc_alloc(struct ghost_heap *heap, size_t size);
+static struct chunk *bin_pop(struct ghost_heap *heap, size_t size);
 static struct chunk *bin_search(
-	struct gorilla_heap *heap, size_t size, struct link ***bin_ptr
+	struct ghost_heap *heap, size_t size, struct link ***bin_ptr
 );
 static int small_bin_index(size_t size);
 static int large_bin_index(size_t size);
-static struct chunk *alloc_on_top(struct gorilla_heap * heap, size_t size);
+static struct chunk *alloc_on_top(struct ghost_heap * heap, size_t size);
 static bool should_split(struct chunk *chunk, size_t desired);
 static void split_chunk(
-	struct gorilla_heap *heap, struct chunk *chunk, size_t desired
+	struct ghost_heap *heap, struct chunk *chunk, size_t desired
 );
-static void merge_chunks(struct gorilla_heap *heap);
-static void sort_chunks(struct gorilla_heap * heap);
-static void insert_small(struct gorilla_heap *heap, struct chunk *chunk);
-static void insert_large(struct gorilla_heap *heap, struct chunk *chunk);
+static void merge_chunks(struct ghost_heap *heap);
+static void sort_chunks(struct ghost_heap * heap);
+static void insert_small(struct ghost_heap *heap, struct chunk *chunk);
+static void insert_large(struct ghost_heap *heap, struct chunk *chunk);
 static int extend_mmaped_chunk(struct chunk *chunk, size_t desired_size);
 static void bin_append(struct link **bin, struct link *new);
 /******************************************************************************
@@ -104,7 +104,7 @@ static bool is_chunk_small(const struct chunk *chunk)
 }
 /*****************************************************************************/
 static bool is_chunk_free(
-	const struct gorilla_heap *heap,
+	const struct ghost_heap *heap,
 	const struct chunk *chunk
 ) {
 	struct chunk *next = chunk_next_after(chunk);
@@ -173,7 +173,7 @@ static int large_bin_index(size_t size)
 }
 /*****************************************************************************/
 static struct link** get_bin(
-	struct gorilla_heap *heap, const struct chunk *chunk
+	struct ghost_heap *heap, const struct chunk *chunk
 ) {
 	if(is_chunk_small(chunk)) {
 		int idx = small_bin_index(chunk_read_size(chunk));
@@ -185,7 +185,7 @@ static struct link** get_bin(
 }
 /*****************************************************************************/
 static struct link** get_confirmed_bin(
-	struct gorilla_heap *heap, const struct chunk *chunk
+	struct ghost_heap *heap, const struct chunk *chunk
 ) {
 	struct link **sorted_bin = get_bin(heap, chunk);
 	struct link **candidates[] = {&heap->unsorted_bin, sorted_bin};
@@ -211,7 +211,7 @@ static struct link** get_confirmed_bin(
 	return NULL;
 }
 /*****************************************************************************/
-static void pop_from_ll_and_bin(struct gorilla_heap *heap, struct chunk *chunk)
+static void pop_from_ll_and_bin(struct ghost_heap *heap, struct chunk *chunk)
 {
 	struct link **bin = get_bin(heap, chunk);
 
@@ -242,7 +242,7 @@ static void bin_append(struct link **bin, struct link *new)
 }
 /*****************************************************************************/
 static void split_chunk(
-	struct gorilla_heap *heap, struct chunk *chunk, size_t desired
+	struct ghost_heap *heap, struct chunk *chunk, size_t desired
 ) {
 	size_t s1 = DIV_ROUND_UP(
 		desired, MIN_CHUNK_DATA_SIZE
@@ -276,14 +276,14 @@ static void split_chunk(
 	bin_append(&heap->unsorted_bin, &u.new->payload.link);
 }
 /*****************************************************************************/
-static void insert_small(struct gorilla_heap *heap, struct chunk *chunk)
+static void insert_small(struct ghost_heap *heap, struct chunk *chunk)
 {
 	int index = small_bin_index(chunk_read_size(chunk));
 
 	bin_append(&heap->small_bins[index], &chunk->payload.link);
 }
 /*****************************************************************************/
-static void insert_large(struct gorilla_heap *heap, struct chunk *chunk)
+static void insert_large(struct ghost_heap *heap, struct chunk *chunk)
 {
 	size_t chunk_size = chunk_read_size(chunk);
 	int index = large_bin_index(chunk_size);
@@ -388,7 +388,7 @@ static int shrink_mmaped_chunk(struct chunk *chunk, size_t desired_size)
 	return r;
 }
 /*****************************************************************************/
-static void merge_chunks(struct gorilla_heap *heap)
+static void merge_chunks(struct ghost_heap *heap)
 {
 	struct chunk *c = chunk_ll_next_chunk(heap->unsorted_bin, NULL);
 
@@ -428,7 +428,7 @@ static void merge_chunks(struct gorilla_heap *heap)
 	}
 }
 /*****************************************************************************/
-static void sort_chunks(struct gorilla_heap * heap)
+static void sort_chunks(struct ghost_heap * heap)
 {
 	if(heap->unsorted_bin == NULL) {
 		return;
@@ -450,13 +450,13 @@ static void sort_chunks(struct gorilla_heap * heap)
 	heap->unsorted_bin = NULL;
 }
 /*****************************************************************************/
-static void heap_maintenance(struct gorilla_heap *heap)
+static void heap_maintenance(struct ghost_heap *heap)
 {
 	merge_chunks(heap);
 	sort_chunks(heap);
 }
 /*****************************************************************************/
-static struct chunk *alloc_on_top(struct gorilla_heap * heap, size_t size)
+static struct chunk *alloc_on_top(struct ghost_heap * heap, size_t size)
 {
 	struct chunk *top = heap->top_chunk;
 	size_t extra_size = page_size + min_to_map(size);
@@ -492,7 +492,7 @@ static struct chunk *alloc_on_top(struct gorilla_heap * heap, size_t size)
 	return new;
 }
 /*****************************************************************************/
-static void *pure_mmap_alloc(struct gorilla_heap *heap, size_t size)
+static void *pure_mmap_alloc(struct ghost_heap *heap, size_t size)
 {
 	size_t real_size = min_to_map(size + CHUNK_OVERHEAD_SIZE);
 	struct chunk *chunk = mmap(
@@ -514,7 +514,7 @@ static void *pure_mmap_alloc(struct gorilla_heap *heap, size_t size)
 	return &chunk->payload;
 }
 /*****************************************************************************/
-static void *normal_malloc_alloc(struct gorilla_heap *heap, size_t size)
+static void *normal_malloc_alloc(struct ghost_heap *heap, size_t size)
 {
 	struct chunk *chunk = bin_pop(heap, size);
 
@@ -529,7 +529,7 @@ static void *normal_malloc_alloc(struct gorilla_heap *heap, size_t size)
 	return &chunk->payload.data;
 }
 /*****************************************************************************/
-static struct chunk *bin_pop(struct gorilla_heap *heap, size_t size)
+static struct chunk *bin_pop(struct ghost_heap *heap, size_t size)
 {
 	struct link **bin_ptr;
 	struct chunk *found = bin_search(heap, size, &bin_ptr);
@@ -552,7 +552,7 @@ static struct chunk *bin_pop(struct gorilla_heap *heap, size_t size)
 }
 /*****************************************************************************/
 static struct chunk *bin_search(
-	struct gorilla_heap *heap, size_t size, struct link ***bin_ptr
+	struct ghost_heap *heap, size_t size, struct link ***bin_ptr
 ) {
 	struct link *list = heap->unsorted_bin;
 	for(
@@ -597,7 +597,7 @@ static struct chunk *bin_search(
 /******************************************************************************
 *                            FUNCTION DEFINITIONS                             *
 ******************************************************************************/
-void *gorilla_malloc(struct gorilla_heap *heap, size_t size)
+void *ghost_malloc(struct ghost_heap *heap, size_t size)
 {
 	void *ret = NULL;
 	size_t min_for_mmap = page_size * MIN_PAGES_FOR_MALLOC_ALLOC;
@@ -612,7 +612,7 @@ void *gorilla_malloc(struct gorilla_heap *heap, size_t size)
 	return ret;
 }
 /*****************************************************************************/
-void gorilla_free(struct gorilla_heap *heap, void *ptr)
+void ghost_free(struct ghost_heap *heap, void *ptr)
 {
 	struct chunk *chunk;
 
@@ -638,10 +638,10 @@ void gorilla_free(struct gorilla_heap *heap, void *ptr)
 	}
 }
 /*****************************************************************************/
-void *gorilla_realloc(struct gorilla_heap *heap, void *ptr, size_t size)
+void *ghost_realloc(struct ghost_heap *heap, void *ptr, size_t size)
 {
 	if(ptr == NULL) {
-		return gorilla_malloc(heap, size);
+		return ghost_malloc(heap, size);
 	}
 
 	struct chunk *chunk = chunk_mem_ptr(ptr);
@@ -705,17 +705,17 @@ void *gorilla_realloc(struct gorilla_heap *heap, void *ptr, size_t size)
 		}
 	}
 
-	void *new_alloc = gorilla_malloc(heap, size);
+	void *new_alloc = ghost_malloc(heap, size);
 
 	if(new_alloc != NULL) {
 		memcpy(new_alloc, ptr, real_chunk_size);
-		gorilla_free(heap, ptr);
+		ghost_free(heap, ptr);
 	}
 
 	return new_alloc;
 }
 /*****************************************************************************/
-void *gorilla_malloc_check_leaks(struct gorilla_heap *heap, void **ptr)
+void *ghost_malloc_check_leaks(struct ghost_heap *heap, void **ptr)
 {
 	struct chunk *c;
 
@@ -743,7 +743,7 @@ void *gorilla_malloc_check_leaks(struct gorilla_heap *heap, void **ptr)
 	return NULL;
 }
 /*****************************************************************************/
-int gorilla_heap_destroy(struct gorilla_heap *heap)
+int ghost_heap_destroy(struct ghost_heap *heap)
 {
 	size_t top_size = chunk_read_size(heap->top_chunk);
 	uint8_t *end_of_heap = heap->top_chunk->payload.bytes + top_size;
@@ -752,9 +752,9 @@ int gorilla_heap_destroy(struct gorilla_heap *heap)
 	return munmap(heap, end_of_heap - top_of_heap);
 }
 /*****************************************************************************/
-struct gorilla_heap *gorilla_heap_init(void)
+struct ghost_heap *ghost_heap_init(void)
 {
-	struct gorilla_heap *ret = NULL;
+	struct ghost_heap *ret = NULL;
 
 	size_t size_mapped;
 	int prot;

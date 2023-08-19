@@ -1,7 +1,7 @@
 /******************************************************************************
 * Copyright (C) 2019  Billy Kozak                                             *
 *                                                                             *
-* This file is part of the gorilla-patch program                              *
+* This file is part of the ghost-patch program                                *
 *                                                                             *
 * This program is free software: you can redistribute it and/or modify        *
 * it under the terms of the GNU Lesser General Public License as published by *
@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#ifndef GORILLA_MALLOC_H
-#define GORILLA_MALLOC_H
+#ifndef GHOST_MALLOC_H
+#define GHOST_MALLOC_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
@@ -25,15 +25,15 @@
 /******************************************************************************
 *                                    TYPES                                    *
 ******************************************************************************/
-struct gorilla_heap;
+struct ghost_heap;
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-void *gorilla_malloc(struct gorilla_heap *heap, size_t size);
-void gorilla_free(struct gorilla_heap *heap, void *ptr);
-void *gorilla_realloc(struct gorilla_heap *heap, void *ptr, size_t size);
-void *gorilla_malloc_check_leaks(struct gorilla_heap *heap, void **ptr);
-int gorilla_heap_destroy(struct gorilla_heap *heap);
-struct gorilla_heap *gorilla_heap_init(void);
+void *ghost_malloc(struct ghost_heap *heap, size_t size);
+void ghost_free(struct ghost_heap *heap, void *ptr);
+void *ghost_realloc(struct ghost_heap *heap, void *ptr, size_t size);
+void *ghost_malloc_check_leaks(struct ghost_heap *heap, void **ptr);
+int ghost_heap_destroy(struct ghost_heap *heap);
+struct ghost_heap *ghost_heap_init(void);
 /*****************************************************************************/
-#endif /* GORILLA_MALLOC_H */
+#endif /* GHOST_MALLOC_H */

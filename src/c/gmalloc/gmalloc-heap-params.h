@@ -1,5 +1,4 @@
-/******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+/****************************************************************************** Copyright (C) 2023 Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
 *                                                                             *
@@ -16,22 +15,10 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#ifndef SYSCALL_UTL_H
-#define SYSCALL_UTL_H
+#ifndef GMALLOC_HEAP_PARAMS_H
+#define GMALLOC_HEAP_PARAMS_H
 /******************************************************************************
-*                                  INCLUDES                                   *
+*                                   DEFINES                                   *
 ******************************************************************************/
-#include <sys/types.h>
-/******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
-******************************************************************************/
-void syscall_exit(int code);
-pid_t syscall_gettid(void);
-pid_t syscall_getpid(void);
-int arch_prctl_get_fs(unsigned long *fs);
-int arch_prctl_set_fs(unsigned long fs);
-int arch_prctl_get_gs(unsigned long *gs);
-int arch_prctl_set_gs(unsigned long gs);
-unsigned long arch_prctl_get_fs_nocheck(void);
 /*****************************************************************************/
-#endif /* SYSCALL_UTL_H */
+#endif /* GMALLOC_HEAP_PARAMS_H */

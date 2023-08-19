@@ -1,7 +1,7 @@
 /******************************************************************************
 * Copyright (C) 2019  Billy Kozak                                             *
 *                                                                             *
-* This file is part of the gorilla-patch program                              *
+* This file is part of the ghost-patch program                                *
 *                                                                             *
 * This program is free software: you can redistribute it and/or modify        *
 * it under the terms of the GNU Lesser General Public License as published by *
@@ -29,7 +29,7 @@
 /******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
-static const char OPTION_ENV_VAR[] = "GORILLA_PATCH_OPTS";
+static const char OPTION_ENV_VAR[] = "GHOST_PATCH_OPTS";
 static const char FAKE_PID_FIELD[] = "fake_pid";
 /******************************************************************************
 *                                    DATA                                     *
