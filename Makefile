@@ -141,9 +141,6 @@ all: optomized
 no_trace: CFLAGS += -DDEBUG_MODE_NO_PTRACE
 no_trace: debug
 
-no_thread: CFLAGS += -DDEBUG_MODE_NO_THREAD
-no_thread: debug
-
 tests: $(BUILD_TEST_DIR)/.dir_dummy
 tests: CFLAGS += -DDEBUG=1 -g -O0
 tests: $(TEST_EXES)

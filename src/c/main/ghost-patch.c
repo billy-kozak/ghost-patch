@@ -114,9 +114,24 @@ static int target_args_pos(int argc, char **argv)
 	return -1;
 }
 /*****************************************************************************/
-static void setup_ld_preload(void)
+static char *shared_object(void)
 {
 	char *executable = this_executable();
+	size_t len = strlen(executable) + 1;
+	size_t new_len = len + 3;
+
+	char *so = realloc(executable, new_len);
+
+	assert(so != NULL);
+
+	strcat(so, ".so");
+
+	return so;
+}
+/*****************************************************************************/
+static void setup_ld_preload(void)
+{
+	char *executable = shared_object();
 	char *current = getenv("LD_PRELOAD");
 	char *new = NULL;
 
@@ -152,14 +167,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	if(DEBUG_MODE_NO_THREAD) {
-		/*struct trace_descriptor descr = pseudo_strace_descriptor();
-
-		start_trace(&descr, NULL);*/
-	} else {
-		setup_ld_preload();
-	}
-
+	setup_ld_preload();
 
 	if(execvp(argv[targ_arg_index], argv + targ_arg_index)) {
 		perror(NULL);

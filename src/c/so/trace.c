@@ -299,23 +299,14 @@ static int trace_target(pid_t target_pid)
 /*****************************************************************************/
 static int start_monitor(void)
 {
-	if(DEBUG_MODE_NO_THREAD) {
-		if((child_pid = fork()) != 0) {
-			syscall_exit(monitor(child_pid));
-		} else {
-			child_pid = syscall_getpid();
-		}
-		return 0;
-	} else {
-		if(fake_pthread(monitor_thread, NULL)) {
-			return 1;
-		}
-
-		tj_swap(&tj_main, &tj_thread, 1);
-		assert(arch_prctl_get_fs_nocheck() == tj_main.fs);
-
-		return 0;
+	if(fake_pthread(monitor_thread, NULL)) {
+		return 1;
 	}
+
+	tj_swap(&tj_main, &tj_thread, 1);
+	assert(arch_prctl_get_fs_nocheck() == tj_main.fs);
+
+	return 0;
 }
 /*****************************************************************************/
 static int load_regs(struct tracee_state *state)
@@ -393,10 +384,6 @@ int start_trace(
 	if(DEBUG_MODE_NO_PTRACE == 0) {
 		ptrace(PTRACE_TRACEME, 0, 0, 0);
 		kill(child_pid, SIGSTOP);
-	}
-
-	if(DEBUG_MODE_NO_THREAD == 0) {
-		while(wait_flag == 0);
 	}
 
 	if(ents != NULL) {

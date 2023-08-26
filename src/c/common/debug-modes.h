@@ -24,9 +24,5 @@
 #ifndef DEBUG_MODE_NO_PTRACE
 #define DEBUG_MODE_NO_PTRACE 0
 #endif
-
-#ifndef DEBUG_MODE_NO_THREAD
-#define DEBUG_MODE_NO_THREAD 0
-#endif
 /*****************************************************************************/
 #endif /* DEBUG_MODES_H */
