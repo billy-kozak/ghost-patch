@@ -19,12 +19,9 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "debug-modes.h"
-#include "trace.h"
-#include "pseudo-strace.h"
-#include "options.h"
-
+#include <proc-utl.h>
+#include <debug-modes.h>
+#include <options.h>
 #include <utl/str-utl.h>
 
 #include <unistd.h>
@@ -156,9 +153,9 @@ int main(int argc, char **argv)
 	}
 
 	if(DEBUG_MODE_NO_THREAD) {
-		struct trace_descriptor descr = pseudo_strace_descriptor();
+		/*struct trace_descriptor descr = pseudo_strace_descriptor();
 
-		start_trace(&descr, NULL);
+		start_trace(&descr, NULL);*/
 	} else {
 		setup_ld_preload();
 	}
