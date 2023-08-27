@@ -27,6 +27,7 @@
 #include "pseudo-strace.h"
 #include "application.h"
 #include "options.h"
+#include "secret-heap.h"
 
 #include <dlfcn.h>
 #include <string.h>
@@ -88,6 +89,8 @@ EXPORT int __libc_start_main(
 	void (*rtld_fini) (void),
 	void (* stack_end)
 ) {
+	secret_heap_init();
+
 	int (*real_libc_start_main)
 		(
 			int (*main)(int, char **, char **),

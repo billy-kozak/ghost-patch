@@ -236,6 +236,24 @@ static void* start_of_heap(struct memory_mapping *mappings, int map_count)
 	return NULL;
 }
 /*****************************************************************************/
+static void* end_of_data(struct memory_mapping *mappings, int map_count)
+{
+	if(map_count == 0) {
+		return NULL;
+	}
+
+	void *end_prev = mappings[0].addr_end;
+
+	for(int i = 1; i < map_count; i++) {
+		if(mappings[i].addr_start != end_prev) {
+			break;
+		}
+		end_prev = mappings[i].addr_end;
+	}
+
+	return end_prev;
+}
+/*****************************************************************************/
 static size_t get_total_system_memory(void)
 {
 	size_t page_size = getpagesize();
@@ -260,7 +278,18 @@ void* gmalloc_maps_find_suitable_heap(void)
 	uint8_t *soh = start_of_heap(mappings, count);
 	uint8_t *sos = start_of_stack(mappings, count);
 
-	uint8_t *addr = soh + mem;
+	assert(sos != NULL);
+
+	uint8_t *addr;
+
+	if(soh == NULL) {
+		uint8_t *eod = end_of_data(mappings, count);
+		assert(eod != NULL);
+
+		addr = eod + mem + getpagesize() * 2;
+	} else {
+		addr = soh + mem;
+	}
 
 	while(addr < sos) {
 		uint8_t *next = check_collision(

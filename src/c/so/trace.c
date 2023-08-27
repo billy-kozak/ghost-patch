@@ -30,6 +30,7 @@
 #include "tracee-state-table.h"
 #include "application.h"
 #include "options.h"
+#include "secret-heap.h"
 
 #include <stdint.h>
 #include <stdio.h>

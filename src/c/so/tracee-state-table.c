@@ -22,6 +22,8 @@
 ******************************************************************************/
 #include "tracee-state-table.h"
 
+#include "secret-heap.h"
+
 #include <stdint.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -29,7 +31,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <sys/mman.h>
 #include <limits.h>
 #include <string.h>
 #include <stdio.h>
@@ -45,7 +46,6 @@ const size_t READ_BUFFER_SIZE = 32;
 *                                    DATA                                     *
 ******************************************************************************/
 static int max_threads;
-size_t mem_size;
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
@@ -130,13 +130,12 @@ int tracee_state_table_store(void *t, pid_t id, uint8_t state)
 /*****************************************************************************/
 void tracee_state_table_destroy(void *table)
 {
-	munmap(table, mem_size);
+	ghost_free(sheap, table);
 }
 /*****************************************************************************/
 void *tracee_state_table_init(void)
 {
 	void *ret = NULL;
-	int pagesize = getpagesize();
 
 	if(max_threads == 0) {
 		max_threads = compute_max_threads();
@@ -144,24 +143,14 @@ void *tracee_state_table_init(void)
 		if(max_threads < 0) {
 			return NULL;
 		}
-		mem_size =
-			((max_threads / pagesize) * pagesize)
-			+ ((max_threads % pagesize) ? pagesize : 0);
 	}
 
 	/* avoid calling malloc when we are operating within the memory
 	space of another process */
-	ret = mmap(
-		NULL,
-		mem_size,
-		PROT_READ | PROT_WRITE,
-		MAP_PRIVATE | MAP_ANONYMOUS,
-		-1,
-		0
-	);
+	ret = ghost_malloc(sheap, max_threads);
 
 	if(ret != NULL) {
-		memset(ret, -1, mem_size);
+		memset(ret, -1, max_threads);
 	}
 	return ret;
 }
