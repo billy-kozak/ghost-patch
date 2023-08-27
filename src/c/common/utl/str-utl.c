@@ -145,10 +145,8 @@ int lstring_cmp(const struct lstring *ls, const char *s)
 			} else {
 				return -1;
 			}
-
-			if(s[i] != ls->str[i]) {
-				return ls->str[i] - s[i];
-			}
+		} else if(s[i] != ls->str[i]) {
+			return ls->str[i] - s[i];
 		}
 	}
 	return 0;
