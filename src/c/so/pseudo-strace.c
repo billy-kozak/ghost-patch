@@ -23,6 +23,7 @@
 #include "pseudo-strace.h"
 
 #include "trace.h"
+#include <gio/ghost-stdio.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -105,7 +106,7 @@ static const struct named_flag MPROTECT_FLAGS[] = {
 static void* init(void *arg);
 static void* handle(void *argg, const struct tracee_state *state);
 static void print_syscall(
-	FILE *fp, pid_t pid, const struct user_regs_struct *regs
+	struct ghost_file *fp, pid_t pid, const struct user_regs_struct *regs
 );
 static uint64_t syscall_retval(const struct user_regs_struct *regs);
 static uint64_t syscall_arg(int n, const struct user_regs_struct *regs);
@@ -283,7 +284,7 @@ static uint64_t syscall_arg(int n, const struct user_regs_struct *regs)
 }
 /*****************************************************************************/
 static void print_syscall(
-	FILE *fp, pid_t pid, const struct user_regs_struct *regs
+	struct ghost_file *fp, pid_t pid, const struct user_regs_struct *regs
 ) {
 	char p_buffer_1[PRINT_BUFFER_SIZE];
 	char p_buffer_2[PRINT_BUFFER_SIZE];
@@ -292,7 +293,7 @@ static void print_syscall(
 
 	switch(syscall_no) {
 	case SYS_read:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: read(%d, %p, %ld) = %d (%s)\n",
 			pid,
 			SYSCALL_ARG(int,     0, regs),
@@ -303,7 +304,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_write:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: write(%d, %s, %ld) = %d\n",
 			pid,
 			SYSCALL_ARG(int,     0, regs),
@@ -313,7 +314,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_open:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: open(%s, %d, %ld) = %d\n",
 			pid,
 			SYSCALL_STR(p_buffer_1, PRINT_BUFFER_SIZE, 0, regs),
@@ -323,7 +324,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_close:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: close(%d) = %d\n",
 			pid,
 			SYSCALL_ARG(int,     0, regs),
@@ -331,7 +332,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_fstat:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: fstat(%d, %p) = %d\n",
 			pid,
 			SYSCALL_ARG(int,     0, regs),
@@ -340,7 +341,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_lseek:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: lseek(%u, %d, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(uint32_t,   0, regs),
@@ -349,7 +350,7 @@ static void print_syscall(
 			SYSCALL_RETVAL(int, regs)
 		);
 	case SYS_mmap:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: mmap(%p, %ld, %s, %s, %d, %lu) = %p\n",
 			pid,
 			SYSCALL_ARG(void*,    0, regs),
@@ -368,7 +369,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_mprotect:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: mprotect(%p, %ld, %s) = %d\n",
 			pid,
 			SYSCALL_ARG(void*,    0, regs),
@@ -381,7 +382,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_munmap:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: munmap(%p, %lu) = %d\n",
 			pid,
 			SYSCALL_ARG(void*,    0, regs),
@@ -390,7 +391,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_rt_sigaction:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: sigaction(%d, %p, %p, %ld) = %d\n",
 			pid,
 			SYSCALL_ARG(int,      0, regs),
@@ -401,7 +402,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_ioctl:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: ioctl(%d, %lu, %p) = %d\n",
 			pid,
 			SYSCALL_ARG(int,       0, regs),
@@ -411,7 +412,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_access:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: access(%s, %d) = %d\n",
 			pid,
 			SYSCALL_STR(p_buffer_1, PRINT_BUFFER_SIZE, 0, regs),
@@ -420,14 +421,14 @@ static void print_syscall(
 		);
 		break;
 	case SYS_getpid:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: getpid() = %d\n",
 			pid,
 			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
 	case SYS_socket:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: socket(%d, %d, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(int,       0, regs),
@@ -437,7 +438,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_connect:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: connect(%d, %p, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(int,       0, regs),
@@ -447,7 +448,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_clone:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: clone(%lu, %lu, %p, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(uint64_t,  0, regs),
@@ -458,7 +459,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_getdents:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: getdents(%d, %p, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(int,       0, regs),
@@ -468,14 +469,14 @@ static void print_syscall(
 		);
 		break;
 	case SYS_geteuid:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: geteuid() = %d\n",
 			pid,
 			SYSCALL_RETVAL(int,    regs)
 		);
 		break;
 	case SYS_futex:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: futex(%p, %d, %d, %p, %p, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(void*,     0, regs),
@@ -488,7 +489,7 @@ static void print_syscall(
 		);
 		break;
 	case SYS_openat:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: openat(%d, %s, %d, %d) = %d\n",
 			pid,
 			SYSCALL_ARG(int,       0, regs),
@@ -499,7 +500,7 @@ static void print_syscall(
 		);
 		break;
 	default:
-		fprintf(
+		ghost_fprintf(
 			fp, "[ID %d]: syscall(%d, ...) = %lu\n",
 			pid, syscall_no, SYSCALL_RETVAL(uint64_t, regs)
 		);
@@ -508,20 +509,22 @@ static void print_syscall(
 /*****************************************************************************/
 static void* init(void *arg)
 {
-	return fopen("/dev/stderr", "w");
+	return ghost_stderr;
 }
 /*****************************************************************************/
 static void* handle(void *arg, const struct tracee_state *state)
 {
+	struct ghost_file *fp = arg;
+
 	if(state->status == STARTED) {
-		fprintf(arg, "[ID %d]: Started\n", state->pid);
+		ghost_fprintf(fp, "[ID %d]: Started\n", state->pid);
 	} else if(state->status == SYSCALL_ENTER_STOP) {
 
 	} else if(state->status == SYSCALL_EXIT_STOP) {
-		print_syscall(arg, state->pid, &state->data.regs);
+		print_syscall(fp, state->pid, &state->data.regs);
 	} else if(state->status == EXITED_NORMAL) {
-		fprintf(
-			arg,
+		ghost_fprintf(
+			fp,
 			"[ID %d]: Exited: %d\n",
 			state->pid,
 			state->data.exit_status

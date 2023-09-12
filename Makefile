@@ -119,11 +119,7 @@ INC_SO += $(INC_COMMON)
 INC_TEST += $(foreach f,$(I_TEST),-I$(f))
 INC_TEST += $(INC_COMMON) $(INC_SO)
 
-TEST_SUITES = $(foreach f, $(wildcard src/c/test/suites/*.c), $(notdir $(f)))
-TEST_EXES = $(foreach f,\
-	$(TEST_SUITES),\
-	$(TEST_EXE_DIR)/$(patsubst %.c,%, $(f))\
-)
+TEST_EXE = $(TEST_EXE_DIR)/ghost-patch-tests
 
 vpath %.c $(CSRC_DIRS)
 vpath %.S $(ASM_DIRS)
@@ -143,7 +139,7 @@ no_trace: debug
 
 tests: $(BUILD_TEST_DIR)/.dir_dummy
 tests: CFLAGS += -DDEBUG=1 -g -O0
-tests: $(TEST_EXES)
+tests: $(TEST_EXE)
 
 fast_tests: $(BUILD_TEST_DIR)/.dir_dummy
 fast_tests: CFLAGS += -DNDEBUG=1 -march=native -Os -flto
@@ -216,7 +212,7 @@ $(SO): common_o so_o asm_o | $(EXE_DIR)/.dir_dummy
 $(BINARY): common_o main_o | $(EXE_DIR)/.dir_dummy
 	$(LD) $(LDFLAGS) -pie  $(MAIN_OBJ) $(MAIN_LIBS) -o $@
 
-$(TEST_EXE_DIR)/%: common_o so_o test_o asm_o | $(TEST_EXE_DIR)/.dir_dummy
+$(TEST_EXE): common_o so_o test_o asm_o | $(TEST_EXE_DIR)/.dir_dummy
 	$(LD) $(LDFLAGS) $(TEST_OBJ) $(TEST_LIBS) -o $@
 
 clean:

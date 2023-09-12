@@ -16,23 +16,12 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef FMT_DATA_H
+#define FMT_DATA_H
 /******************************************************************************
-*                                  INCLUDES                                   *
+*                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-#include "secret-heap.h"
-
-#include <gmalloc/ghost-malloc.h>
-/******************************************************************************
-*                                    DATA                                     *
-******************************************************************************/
-struct ghost_heap *sheap = NULL;
-/******************************************************************************
-*                            FUNCTION DEFINITIONS                             *
-******************************************************************************/
-void secret_heap_init(void)
-{
-	if(sheap == NULL) {
-		sheap = ghost_heap_init();
-	}
-}
+int format_int(int i, void(*emit)(void*,char), void *emit_arg);
+int format_uint(
 /*****************************************************************************/
+#endif /* FMT_DATA_H */

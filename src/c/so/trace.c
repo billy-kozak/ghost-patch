@@ -31,6 +31,7 @@
 #include "application.h"
 #include "options.h"
 #include "secret-heap.h"
+#include <gio/ghost-stdio.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -131,8 +132,11 @@ static int monitor_thread(void* arg)
 	application_set_proc_name();
 	setup_signal_handling();
 
+	int exit_code = monitor(child_pid);
 
-	syscall_exit(monitor(child_pid));
+	ghost_stdio_cleanup();
+
+	syscall_exit(exit_code);
 
 	return -1;
 }

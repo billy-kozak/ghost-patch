@@ -16,23 +16,12 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef TEST_SUITES_H
+#define TEST_SUITES_H
 /******************************************************************************
-*                                  INCLUDES                                   *
+*                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-#include "secret-heap.h"
-
-#include <gmalloc/ghost-malloc.h>
-/******************************************************************************
-*                                    DATA                                     *
-******************************************************************************/
-struct ghost_heap *sheap = NULL;
-/******************************************************************************
-*                            FUNCTION DEFINITIONS                             *
-******************************************************************************/
-void secret_heap_init(void)
-{
-	if(sheap == NULL) {
-		sheap = ghost_heap_init();
-	}
-}
+void test_suite_ghost_malloc(void);
+void test_suite_ghost_stdio(void);
 /*****************************************************************************/
+#endif /* TEST_SUITES_H */

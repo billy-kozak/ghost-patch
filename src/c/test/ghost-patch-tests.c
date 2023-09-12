@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
 *                                                                             *
@@ -16,128 +16,135 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#define _GNU_SOURCE
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "shared.h"
+#include <suites/test-suites.h>
 
-#include "trace.h"
-#include "syscall-utl.h"
-#include "pseudo-strace.h"
-#include "application.h"
-#include "options.h"
-#include "secret-heap.h"
-#include <gio/ghost-stdio.h>
+#include <picounit/picounit.h>
 
-#include <dlfcn.h>
-#include <string.h>
+#include <getopt.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdbool.h>
-#include <setjmp.h>
-#include <sys/types.h>
+#include <assert.h>
 /******************************************************************************
-*                                    DATA                                     *
+*                                  CONSTANTS                                  *
 ******************************************************************************/
-static pid_t parent_pid;
-static pid_t child_pid;
+static const struct option GETOPT_OPTIONS[] = {
+	{"help", no_argument, NULL, 'h'},
+	{"test", required_argument, NULL, 't'},
+	{"ls", no_argument, NULL, 'l'},
+	{NULL, 0, 0, 0}
+};
 
-static struct prog_opts cached_opts;
+static const char OPT_STRING[] = "+hlt:";
+
+static const char HELP_TEXT[] =
+	"Run ghost-patch unit tests"
+	"\n"
+	"Options:\n"
+	"-h,  --help     Display this help text\n"
+	"--test=<NAME>   Run the given named test only. If not given then\n"
+	"                all tests are run\n"
+	"-l, --ls        List all namd tests and exit\n";
+
+static const char* NAMED_TEST[] = {
+	"stdio",
+	"malloc"
+};
+
+#define NUM_TESTS (sizeof(NAMED_TEST) / sizeof(NAMED_TEST[0]))
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
-static bool am_py_trace(const char *progname);
-static sigjmp_buf jump_buffer;
-/*****************************************************************************/
-static void do_special_setup(void)
+static void print_named_test_err(const char *name)
 {
-	struct trace_entities ents;
-	struct trace_descriptor descr = pseudo_strace_descriptor();
-
-	if(start_trace(&descr, &ents)) {
-		perror("Unable to start trace");
-	}
-
-	get_options(&cached_opts);
-
-	parent_pid = ents.parent;
-	child_pid = ents.child;
+	fprintf(stderr, "Error: no such test '%s'\n", name);
 }
 /*****************************************************************************/
-static bool am_py_trace(const char *progname)
+static void print_named_tests(void)
 {
-	return strcmp(basename(progname), APPLICATION_NAME) == 0;
+	for(int i = 0; i < NUM_TESTS; i++) {
+		printf("%s\n", NAMED_TEST[i]);
+	}
 }
 /*****************************************************************************/
-static int fake_main(int argc, char **argv, char **envp)
+static void run_test(int idx)
 {
-	if(!am_py_trace(argv[0])) {
-		do_special_setup();
+	switch(idx) {
+	case 0:
+		PUNIT_RUN_SUITE(test_suite_ghost_stdio);
+		break;
+	case 1:
+		PUNIT_RUN_SUITE(test_suite_ghost_malloc);
+		break;
+	default:
+		fprintf(stderr, "Error: no such text number %d\n", idx);
+	}
+}
+/*****************************************************************************/
+static void run_tests(int idx)
+{
+	if(idx < 0) {
+		for(int i = 0; i < NUM_TESTS; i++) {
+			run_test(i);
+		}
+	} else {
+		run_test(idx);
 	}
 
-	siglongjmp(jump_buffer, 1);
-	return 0;
+	punit_print_stats();
+}
+/*****************************************************************************/
+static int test_name_to_idx(const char *name)
+{
+	for(int i = 0; i < NUM_TESTS; i++) {
+		if(strcmp(NAMED_TEST[i], name) == 0) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 /******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
+*                            FUNCTION DEFINITIONS                             *
 ******************************************************************************/
-EXPORT int __libc_start_main(
-	int (*main)(int, char **, char **),
-	int argc,
-	char **ubp_av,
-	void (*init)(void),
-	void (*fini)(void),
-	void (*rtld_fini) (void),
-	void (* stack_end)
-) {
-	secret_heap_init();
-	ghost_stdio_init();
-
-	int (*real_libc_start_main)
-		(
-			int (*main)(int, char **, char **),
-			int argc,
-			char **ubp_av, void (*init)(void),
-			void (*fini)(void),
-			void (*rtld_fini) (void),
-			void (* stack_end)
-		);
-
-	if(sigsetjmp(jump_buffer, 0) == 0) {
-		real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
-		return real_libc_start_main(
-			fake_main,
-			argc,
-			ubp_av,
-			init,
-			fini,
-			rtld_fini,
-			stack_end
-		);
-	} else {
-		real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
-		return real_libc_start_main(
-			main,
-			argc,
-			ubp_av,
-			init,
-			fini,
-			rtld_fini,
-			stack_end
-		);
-	}
-
-
-}
-/*****************************************************************************/
-EXPORT pid_t getpid(void)
+int main(int argc, char **argv)
 {
-	pid_t result = syscall_getpid();
+	int opt_ind = 0;
+	bool flag = true;
 
-	if(cached_opts.fake_pid && (result == child_pid)) {
-		return parent_pid;
-	} else {
-		return result;
+	int test_idx = -1;
+
+	while(flag) {
+		int c = getopt_long(
+			argc, argv, OPT_STRING, GETOPT_OPTIONS, &opt_ind
+		);
+		switch(c) {
+		case -1:
+			flag = false;
+			break;
+		case 'h':
+			printf("%s", HELP_TEXT);
+			return 0;
+		case 't':
+			test_idx = test_name_to_idx(optarg);
+			if(test_idx < 0) {
+				print_named_test_err(optarg);
+				return -1;
+			}
+			break;
+		case 'l':
+			print_named_tests();
+			return 0;
+		default:
+			return -1;
+		}
 	}
+
+	run_tests(test_idx);
+
+	return 0;
 }
 /*****************************************************************************/

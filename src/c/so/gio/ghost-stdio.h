@@ -16,70 +16,36 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#ifndef MATH_UTL_H
-#define MATH_UTL_H
+#ifndef GHOST_STDIO_H
+#define GHOST_STDIO_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include <stdint.h>
+#include <stdlib.h>
 /******************************************************************************
-*                                   MACROS                                    *
+*                                    TYPES                                    *
 ******************************************************************************/
-#define DIV_ROUND_UP(n, d) (((n) / (d)) + (((n) % (d)) ? 1 : 0))
+struct ghost_file;
 /******************************************************************************
-*                              INLINE_FUNCTIONS                               *
+*                                    DATA                                     *
 ******************************************************************************/
-static inline uint64_t align_up_unsigned(uint64_t size, uint64_t align)
-{
-	if((size % align) == 0) {
-		return (size / align) * align;
-	} else {
-		return ((size / align) * (align)) + align;
-	}
-}
+extern struct ghost_file *ghost_stdin;
+extern struct ghost_file *ghost_stdout;
+extern struct ghost_file *ghost_stderr;
+/******************************************************************************
+*                            FUNCTION DECLARATIONS                            *
+******************************************************************************/
+struct ghost_file *ghost_fopen(
+		const char *restrict pathname,
+		const char *restrict mode
+);
+struct ghost_file *ghost_fdopen(int fd, const char *restrict mode);
+int ghost_fclose(struct ghost_file *file);
+int ghost_fprintf(struct ghost_file *f, const char *restrict fmt, ...);
+int ghost_printf(const char *restrict fmt, ...);
+int ghost_snprintf(char *restrict str, size_t size, char *restrict fmt, ...);
+int ghost_fflush(struct ghost_file *file);
+void ghost_stdio_init(void);
+void ghost_stdio_cleanup(void);
 /*****************************************************************************/
-static inline uint64_t align_down_unsigned(uint64_t size, uint64_t align)
-{
-	return (size / align) * align;
-}
-/*****************************************************************************/
-static inline int64_t math_utl_round(double d)
-{
-	double floor = (double)((int64_t)d);
-	double frac = d - floor;
-
-	if(frac >= 0.5) {
-		return ((int64_t)(floor)) + 1;
-	} else {
-		return (int64_t)(floor);
-	}
-}
-/*****************************************************************************/
-static inline int print_width_intmax_t(void)
-{
-	intmax_t min = INTMAX_MIN;
-	int width = 1;
-
-	while(min != 0) {
-		width += 1;
-		min /= 10;
-	}
-
-	return width;
-}
-/*****************************************************************************/
-static inline int print_width_uint_max_t(int base)
-{
-	uintmax_t max = UINTMAX_MAX;
-	int width = 0;
-
-	while(max != 0) {
-		width += 1;
-		max /= base;
-	}
-
-	return width;
-}
-/*****************************************************************************/
-#endif /* MATH_UTL_H */
-
+#endif /* GHOST_STDIO_H */

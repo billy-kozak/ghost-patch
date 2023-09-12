@@ -408,8 +408,10 @@ static bool test_random_allocations(void)
 	return true;
 }
 /*****************************************************************************/
-static void test_suite(void)
+void test_suite_ghost_malloc(void)
 {
+	page_size = getpagesize();
+
 	PUNIT_RUN_TEST(test_can_init);
 	PUNIT_RUN_TEST(test_alloc_small);
 	PUNIT_RUN_TEST(test_can_merge);
@@ -420,13 +422,5 @@ static void test_suite(void)
 	PUNIT_RUN_TEST(test_realloc_mmap_grow);
 	PUNIT_RUN_TEST(test_mem_move_realloc);
 	PUNIT_RUN_TEST(test_random_allocations);
-}
-/*****************************************************************************/
-int main(int argc, char **argv)
-{
-	page_size = getpagesize();
-	PUNIT_RUN_SUITE(test_suite);
-	punit_print_stats();
-	return 0;
 }
 /*****************************************************************************/

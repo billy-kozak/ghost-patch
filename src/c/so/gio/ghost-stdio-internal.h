@@ -1,4 +1,4 @@
-/******************************************************************************
+/**************************************
 * Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
@@ -16,70 +16,32 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#ifndef MATH_UTL_H
-#define MATH_UTL_H
+#ifndef GHOST_STDIO_INTERNAL_H
+#define GHOST_STDIO_INTERNAL_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include <stdint.h>
+#include <stdlib.h>
 /******************************************************************************
-*                                   MACROS                                    *
+*                                    TYPES                                    *
 ******************************************************************************/
-#define DIV_ROUND_UP(n, d) (((n) / (d)) + (((n) % (d)) ? 1 : 0))
-/******************************************************************************
-*                              INLINE_FUNCTIONS                               *
-******************************************************************************/
-static inline uint64_t align_up_unsigned(uint64_t size, uint64_t align)
-{
-	if((size % align) == 0) {
-		return (size / align) * align;
-	} else {
-		return ((size / align) * (align)) + align;
-	}
-}
+enum buffer_type {
+	BUFFER_DEFAULT,
+	BUFFER_NL,
+	BUFFER_NONE
+};
+
+struct ghost_file {
+	int fd;
+	enum buffer_type buf_type;
+	size_t buf_size;
+	char *wptr;
+	char buffer[];
+};
+
+struct fmode {
+	int flags;
+	mode_t mode;
+};
 /*****************************************************************************/
-static inline uint64_t align_down_unsigned(uint64_t size, uint64_t align)
-{
-	return (size / align) * align;
-}
-/*****************************************************************************/
-static inline int64_t math_utl_round(double d)
-{
-	double floor = (double)((int64_t)d);
-	double frac = d - floor;
-
-	if(frac >= 0.5) {
-		return ((int64_t)(floor)) + 1;
-	} else {
-		return (int64_t)(floor);
-	}
-}
-/*****************************************************************************/
-static inline int print_width_intmax_t(void)
-{
-	intmax_t min = INTMAX_MIN;
-	int width = 1;
-
-	while(min != 0) {
-		width += 1;
-		min /= 10;
-	}
-
-	return width;
-}
-/*****************************************************************************/
-static inline int print_width_uint_max_t(int base)
-{
-	uintmax_t max = UINTMAX_MAX;
-	int width = 0;
-
-	while(max != 0) {
-		width += 1;
-		max /= base;
-	}
-
-	return width;
-}
-/*****************************************************************************/
-#endif /* MATH_UTL_H */
-
+#endif /* GHOST_STDIO_INTERNAL_H */
