@@ -41,6 +41,17 @@ static bool test_noargs_fmt(void)
 	return true;
 }
 /*****************************************************************************/
+static bool test_double_fmt(void)
+{
+	char test_str[4096];
+	size_t size = sizeof(test_str);
+
+	ghost_snprintf(test_str, size, "%f", 1.25);
+	PUNIT_ASSERT(strcmp(test_str, "1.250000") == 0);
+
+	return true;
+}
+/*****************************************************************************/
 static bool test_str_fmt(void)
 {
 	char test_str[4096];
@@ -166,5 +177,6 @@ void test_suite_ghost_stdio(void)
 	PUNIT_RUN_TEST(test_unsigned_int_fmt);
 	PUNIT_RUN_TEST(test_char_fmt);
 	PUNIT_RUN_TEST(test_str_fmt);
+	PUNIT_RUN_TEST(test_double_fmt);
 }
 /*****************************************************************************/

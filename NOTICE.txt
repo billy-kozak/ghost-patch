@@ -1,0 +1,10 @@
+Ghost Patch
+Copyright 2019-2023
+
+Portions of this software are derived from third-party works licensed
+under terms compatible with the LGPL license.
+
+The floating point string formatting implementation 
+(src/c/gio/musl-fmt-double.c) of the *printf implementation was originally 
+written by musl libc https://musl.libc.org/. It is licensed under an MIT
+standard license.

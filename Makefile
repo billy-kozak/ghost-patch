@@ -144,7 +144,7 @@ tests: $(TEST_EXE)
 fast_tests: $(BUILD_TEST_DIR)/.dir_dummy
 fast_tests: CFLAGS += -DNDEBUG=1 -march=native -Os -flto
 fast_tests: LDFLAGS += -march=native -Os -flto
-fast_tests: $(TEST_EXES)
+fast_tests: $(TEST_EXE)
 
 debug: CFLAGS += -DDEBUG=1 -g -O0
 debug: $(BINARY)

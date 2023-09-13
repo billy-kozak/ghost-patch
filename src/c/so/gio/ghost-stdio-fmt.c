@@ -25,6 +25,7 @@
 #include <utl/math-utl.h>
 #include <gmalloc/ghost-malloc.h>
 #include <secret-heap.h>
+#include <gio/musl-fmt-double.h>
 
 #include <stdlib.h>
 #include <stdarg.h>
@@ -34,6 +35,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <wchar.h>
+#include <limits.h>
 /******************************************************************************
 *                                    TYPES                                    *
 ******************************************************************************/
@@ -131,6 +133,8 @@ struct output_file {
 #define FLAG_PSIN 16
 
 #define FMT_ARG_LIST_INIT_LEN 8
+
+#define PREC_UNDEF INT_MIN
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -232,6 +236,7 @@ static int parse_aprec(const char *restrict fmt, size_t pos, int *posn)
 static int parse_fprec(const char *restrict fmt, size_t pos, int *prec)
 {
 	if(fmt[pos] != '.') {
+		*prec = PREC_UNDEF;
 		return 0;
 	}
 
@@ -584,7 +589,7 @@ static void process_mod_args(struct fmt_arg_list *list)
 			int pos = -1 * a->width;
 			a->width = list->args[pos].val.i;
 		}
-		if(a->prec < 0) {
+		if(a->prec < 0 && a->prec != PREC_UNDEF) {
 			int pos = -1 * a->prec;
 			a->prec = list->args[pos].val.i;
 		}
@@ -636,6 +641,82 @@ static void emit_pad(char p, int m, void(*emit)(void*, char), void *emit_arg)
 	}
 }
 /*****************************************************************************/
+static int emit_float(
+	const struct fmt_arg *arg,
+	void(*emit)(void*, char),
+	void *emit_arg
+) {
+	long double v;
+
+	if(arg->mod == LMOD_LL || arg->mod == LMOD_L) {
+		v = arg->val.ld;
+	} else {
+		v = arg->val.d;
+	}
+
+	char conv = 'f';
+
+	switch(arg->conv) {
+	case CONV_FLOAT:
+		conv = 'f';
+		break;
+	case CONV_FLOAT_E:
+		conv = 'e';
+		break;
+	case CONV_FLOAT_EE:
+		conv = 'E';
+		break;
+	case CONV_FLOAT_G:
+		conv = 'g';
+		break;
+	case CONV_FLOAT_GG:
+		conv = 'G';
+		break;
+	case CONV_FLOAT_X:
+		conv = 'a';
+		break;
+	case CONV_FLOAT_XX:
+		conv = 'A';
+		break;
+	default:
+		assert(false);
+		break;
+	}
+
+	int fl = 0;
+
+	if(arg->flags & FLAG_ALT) {
+		fl |= ALT_FORM;
+	}
+	if(arg->flags & FLAG_LADJ) {
+		fl |= LEFT_ADJ;
+	}
+	if(arg->flags & FLAG_SSPC) {
+		fl |= PAD_POS;
+	}
+	if(arg->flags & FLAG_ZPAD) {
+		fl |= ZERO_PAD;
+	}
+	if(arg->flags & FLAG_PSIN) {
+		fl |= MARK_POS;
+	}
+
+	struct musl_output_obj o;
+	o.emit = emit;
+	o.emit_arg = emit_arg;
+
+	musl_fmt_fp(
+		&o,
+		v,
+		arg->width,
+		arg->prec,
+		fl,
+		conv
+	);
+
+	return 0;
+}
+/*****************************************************************************/
 static int emit_arg_str(
 	const struct fmt_arg *arg,
 	void(*emit)(void*, char),
@@ -645,7 +726,7 @@ static int emit_arg_str(
 		const wchar_t *str = arg->val.p;
 		char temp[8];
 		mbstate_t ps;
-		if(arg->prec == 0) {
+		if(arg->prec == PREC_UNDEF) {
 			for(int i = 0; str[i] != L'\0'; i++) {
 				int c = wcrtomb(temp, str[i], &ps);
 				assert(c <= 8);
@@ -670,7 +751,7 @@ static int emit_arg_str(
 	} else {
 		const char *str = arg->val.p;
 
-		if(arg->prec == 0) {
+		if(arg->prec == PREC_UNDEF) {
 			emit_str(str, emit, emit_arg);
 		} else {
 			for(int i = 0; i < arg->prec; i++) {
@@ -914,9 +995,20 @@ static void emit_argument(
 	case CONV_STR:
 		emit_arg_str(arg, emit, emit_arg);
 		break;
-	default:
-		/* Note to self: delete this to get a warning about missing
-		 * handling of enum constants */
+	case CONV_FLOAT:
+	case CONV_FLOAT_E:
+	case CONV_FLOAT_EE:
+	case CONV_FLOAT_G:
+	case CONV_FLOAT_GG:
+	case CONV_FLOAT_X:
+	case CONV_FLOAT_XX:
+		emit_float(arg, emit, emit_arg);
+		break;
+	case CONV_PERCENT:
+		assert(false);
+		break;
+	case CONV_MOD:
+	case CONV_CCOUNT:
 		break;
 	}
 }
