@@ -5,6 +5,9 @@ Portions of this software are derived from third-party works licensed
 under terms compatible with the LGPL license.
 
 The floating point string formatting implementation 
-(src/c/gio/musl-fmt-double.c) of the *printf implementation was originally 
+(src/c/so/gio/musl-fmt-double.c) of the *printf implementation was originally 
 written by musl libc https://musl.libc.org/. It is licensed under an MIT
 standard license.
+
+The lua interpreter (src/c/so/lua/) was originally copied from the lua project
+(www.lua.org). It is licensed under the MIT license (www.lua.org/license.html).
