@@ -261,6 +261,7 @@ static void split_chunk(
 
 	chunk_set_size(u.new, s2 - CHUNK_OVERHEAD_SIZE);
 	/* this chunk is free so we also write the size at end of data */
+	chunk_clear_flags(u.new, ALL_FLAGS);
 	chunk_set_footer_size(u.new);
 	chunk_set_flags(u.new, top_flag | PREV_IN_USE);
 

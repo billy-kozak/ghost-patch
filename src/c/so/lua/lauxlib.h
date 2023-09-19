@@ -8,9 +8,9 @@
 #ifndef lauxlib_h
 #define lauxlib_h
 
+#include <gio/ghost-stdio.h>
 
 #include <stddef.h>
-#include <stdio.h>
 
 #include "luaconf.h"
 #include "lua.h"
@@ -243,7 +243,7 @@ LUALIB_API char *(luaL_buffinitsize) (lua_State *L, luaL_Buffer *B, size_t sz);
 
 
 typedef struct luaL_Stream {
-  FILE *f;  /* stream (NULL for incompletely created streams) */
+  struct ghost_file *f;  /* stream (NULL for incompletely created streams) */
   lua_CFunction closef;  /* to close stream (NULL for closed streams) */
 } luaL_Stream;
 
@@ -257,18 +257,18 @@ typedef struct luaL_Stream {
 
 /* print a string */
 #if !defined(lua_writestring)
-#define lua_writestring(s,l)   fwrite((s), sizeof(char), (l), stdout)
+#define lua_writestring(s,l) ghost_fwrite((s), sizeof(char), (l), ghost_stdout)
 #endif
 
 /* print a newline and flush the output */
 #if !defined(lua_writeline)
-#define lua_writeline()        (lua_writestring("\n", 1), fflush(stdout))
+#define lua_writeline() (lua_writestring("\n", 1), ghost_fflush(ghost_stdout))
 #endif
 
 /* print an error message */
 #if !defined(lua_writestringerror)
 #define lua_writestringerror(s,p) \
-        (fprintf(stderr, (s), (p)), fflush(stderr))
+        (ghost_fprintf(ghost_stderr, (s), (p)), ghost_fflush(ghost_stderr))
 #endif
 
 /* }================================================================== */

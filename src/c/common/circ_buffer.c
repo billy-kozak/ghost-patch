@@ -1,5 +1,5 @@
-/**************************************
-* Copyright (C) 2023  Billy Kozak                                             *
+/******************************************************************************
+* Copyright (C) 2019  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
 *                                                                             *
@@ -16,45 +16,63 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#ifndef GHOST_STDIO_INTERNAL_H
-#define GHOST_STDIO_INTERNAL_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include <stdlib.h>
-
 #include <circ_buffer.h>
+
+#include <string.h>
 /******************************************************************************
-*                                   DEFINES                                   *
+*                            FUNCTION DEFINITIONS                             *
 ******************************************************************************/
-#define GIO_FLAG_BUF   (1 << 1)
-#define GIO_FLAG_LF    (1 << 2)
-#define GIO_FLAG_SBUF  (1 << 3)
-#define GIO_FLAG_READ  (1 << 4)
-#define GIO_FLAG_WRITE (1 << 5)
-#define GIO_FLAG_OPEN  (1 << 6)
+int circ_buffer_grow(
+	struct circ_buffer *cb,
+	size_t new_size,
+	void *(*realloc_f)(void *, void*, size_t),
+	void *realloc_arg
+) {
+	if(new_size < cb->buf_size) {
+		return 0;
+	}
 
-#define GIO_ERR_EOF      (1 << 1)
-#define GIO_ERR_BUFSIZ   (1 << 2)
-#define GIO_ERR_IOERR    (1 << 3)
-#define GIO_ERR_BAD_MODE (1 << 4)
-/******************************************************************************
-*                                    TYPES                                    *
-******************************************************************************/
-struct ghost_file {
-	int fd;
-	int flags;
-	int err;
+	uint8_t *new_buf = realloc_f(realloc_arg, cb->buf, new_size);
 
-	struct circ_buffer wb;
-	struct circ_buffer rb;
+	if(new_buf == NULL) {
+		return -1;
+	}
 
-	char sys_buffer[];
-};
+	size_t widx = cb->p - cb->buf;
+	size_t growth = new_size - cb->buf_size;
+	size_t wrap = widx - cb->used;
 
-struct fmode {
-	int flags;
-	mode_t mode;
-};
+	cb->buf = new_buf;
+	cb->p = new_buf + widx;
+
+	if(widx > cb->used) {
+		uint8_t *old_end = cb->buf + cb->buf_size;
+		if(growth >= wrap) {
+			memmove(old_end, cb->buf, wrap);
+			cb->p = old_end + wrap;
+		} else {
+			size_t extra = wrap - growth;
+			memmove(old_end, cb->buf, growth);
+			memmove(cb->buf, cb->buf + growth, extra);
+			cb->p = cb->buf + extra;
+		}
+	}
+
+	cb->buf_size = new_size;
+
+	return 0;
+}
 /*****************************************************************************/
-#endif /* GHOST_STDIO_INTERNAL_H */
+int circ_buffer_init(struct circ_buffer *cb, uint8_t *space, size_t size)
+{
+	cb->buf_size = size;
+	cb->buf = space;
+	cb->p = space;
+	cb->used = 0;
+
+	return 0;
+}
+/*****************************************************************************/

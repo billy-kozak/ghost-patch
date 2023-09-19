@@ -14,7 +14,7 @@
 #include "lprefix.h"
 
 
-#include <stdio.h>
+#include <gio/ghost-stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -432,9 +432,9 @@ static int ll_loadlib (lua_State *L) {
 
 
 static int readable (const char *filename) {
-  FILE *f = fopen(filename, "r");  /* try to open file */
+  struct ghost_file *f = ghost_fopen(filename, "r");  /* try to open file */
   if (f == NULL) return 0;  /* open failed */
-  fclose(f);
+  ghost_fclose(f);
   return 1;
 }
 

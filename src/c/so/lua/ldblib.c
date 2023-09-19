@@ -10,7 +10,7 @@
 #include "lprefix.h"
 
 
-#include <stdio.h>
+#include <gio/ghost-stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -421,7 +421,7 @@ static int db_debug (lua_State *L) {
   for (;;) {
     char buffer[250];
     lua_writestringerror("%s", "lua_debug> ");
-    if (fgets(buffer, sizeof(buffer), stdin) == NULL ||
+    if (ghost_fgets(buffer, sizeof(buffer), ghost_stdin) == NULL ||
         strcmp(buffer, "cont\n") == 0)
       return 0;
     if (luaL_loadbuffer(L, buffer, strlen(buffer), "=(debug command)") ||

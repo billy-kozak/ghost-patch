@@ -9,6 +9,7 @@
 
 #include "lprefix.h"
 
+#include <gio/ghost-stdio.h>
 
 #include <ctype.h>
 #include <float.h>
@@ -16,7 +17,6 @@
 #include <locale.h>
 #include <math.h>
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 

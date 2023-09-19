@@ -36,7 +36,7 @@
 ******************************************************************************/
 static const size_t ADDR_BUFFER = 4L * (1L << 30);
 
-static const size_t MAX_MAPPINGS = 64;
+static const size_t MAX_MAPPINGS = 1024;
 static const char MAPPING_FILE[] = "/proc/self/maps";
 
 static const size_t MAPPING_MAX_LINE =

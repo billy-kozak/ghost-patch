@@ -1,4 +1,4 @@
-/**************************************
+/******************************************************************************
 * Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
@@ -16,45 +16,73 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#ifndef GHOST_STDIO_INTERNAL_H
-#define GHOST_STDIO_INTERNAL_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
+#include <utl/random-utl.h>
+
 #include <stdlib.h>
-
-#include <circ_buffer.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <time.h>
 /******************************************************************************
-*                                   DEFINES                                   *
+*                                  CONSTANTS                                  *
 ******************************************************************************/
-#define GIO_FLAG_BUF   (1 << 1)
-#define GIO_FLAG_LF    (1 << 2)
-#define GIO_FLAG_SBUF  (1 << 3)
-#define GIO_FLAG_READ  (1 << 4)
-#define GIO_FLAG_WRITE (1 << 5)
-#define GIO_FLAG_OPEN  (1 << 6)
+static const char URANDOM_PATH[] = "/dev/urandom";
 
-#define GIO_ERR_EOF      (1 << 1)
-#define GIO_ERR_BUFSIZ   (1 << 2)
-#define GIO_ERR_IOERR    (1 << 3)
-#define GIO_ERR_BAD_MODE (1 << 4)
+static const char ALPHA_NUM[] =
+	"0123456789"
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	"abcdefghijklmnopqrstuvwxyz";
 /******************************************************************************
-*                                    TYPES                                    *
+*                            FUNCTION DEFINITIONS                             *
 ******************************************************************************/
-struct ghost_file {
-	int fd;
-	int flags;
-	int err;
+void random_utl_rand_alpha_num(
+	struct drand48_data *restrict data,
+	char *restrict str,
+	size_t len
+) {
+	for(int i = 0; i < len; i++) {
+		long t;
+		lrand48_r(data, &t);
+		unsigned long r = (unsigned long)t;
 
-	struct circ_buffer wb;
-	struct circ_buffer rb;
-
-	char sys_buffer[];
-};
-
-struct fmode {
-	int flags;
-	mode_t mode;
-};
+		str[i] = ALPHA_NUM[r % (sizeof(ALPHA_NUM) - 1)];
+	}
+}
 /*****************************************************************************/
-#endif /* GHOST_STDIO_INTERNAL_H */
+int random_utl_seed_from_urandom(struct drand48_data *data)
+{
+	int fd = open(URANDOM_PATH, O_RDONLY);
+	int ret = -1;
+
+	if(fd < 0) {
+		goto exit;
+	}
+
+	char buf[sizeof(long int)];
+
+	int e = read(fd, buf, sizeof(long int));
+	if(e != sizeof(long int)) {
+		goto exit;
+	}
+
+	long int seed = *((long int*)buf);
+	srand48_r(seed, data);
+
+	ret = 0;
+exit:
+	if(fd >= 0) {
+		close(fd);
+	}
+	return ret;
+}
+/*****************************************************************************/
+int random_utl_seed_from_clock(struct drand48_data *data)
+{
+	time_t seed = time(NULL);
+
+	srand48_r(seed, data);
+	return 0;
+}
+/*****************************************************************************/

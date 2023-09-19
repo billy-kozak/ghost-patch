@@ -26,6 +26,7 @@
 #include <gmalloc/ghost-malloc.h>
 #include <secret-heap.h>
 #include <gio/musl-fmt-double.h>
+#include <circ_buffer.h>
 
 #include <stdlib.h>
 #include <stdarg.h>
@@ -752,7 +753,11 @@ static int emit_arg_str(
 		const char *str = arg->val.p;
 
 		if(arg->prec == PREC_UNDEF) {
-			emit_str(str, emit, emit_arg);
+			if(str != NULL) {
+				emit_str(str, emit, emit_arg);
+			} else {
+				emit_str("NULL", emit, emit_arg);
+			}
 		} else {
 			for(int i = 0; i < arg->prec; i++) {
 				if(str[i] == '\0') {
@@ -1118,25 +1123,14 @@ static void emit_to_file(void *arg, char c)
 	struct output_file *of = arg;
 	struct ghost_file *f = of->f;
 
-	size_t used = f->wptr - f->buffer;
-
-	if(used >= f->buf_size) {
+	if(circ_buffer_capacity(&f->wb) == 0) {
 		ghost_fflush(f);
 	}
 
-	used = f->wptr - f->buffer;
-
-	if(used >= f->buf_size) {
-		assert(false);
-		return;
-	}
-
-	*f->wptr = c;
-	f->wptr += 1;
-
+	circ_buffer_write(&f->wb, &c, 1);
 	of->i += 1;
 
-	if(f->buf_type == BUFFER_NL && c == '\n') {
+	if(f->flags & GIO_FLAG_LF && c == '\n') {
 		ghost_fflush(f);
 	}
 }
@@ -1150,12 +1144,20 @@ int ghost_fprintf(struct ghost_file *f, const char *restrict fmt, ...)
 	of.i = 0;
 	of.f = f;
 
+	if(!(f->flags & GIO_FLAG_WRITE)) {
+		return -1;
+	}
+
 	va_list args;
 	va_start(args, fmt);
 
 	fmt_write(fmt, emit_to_file, &of, args);
 
 	va_end(args);
+
+	if(!(f->flags & GIO_FLAG_BUF)) {
+		ghost_fflush(f);
+	}
 
 	return of.i;
 }
@@ -1174,11 +1176,19 @@ int ghost_printf(const char *restrict fmt, ...)
 
 	va_end(args);
 
+	if(!(ghost_stdout->flags & GIO_FLAG_BUF)) {
+		ghost_fflush(ghost_stdout);
+	}
+
 	return of.i;
 }
 /*****************************************************************************/
-int ghost_snprintf(char *restrict str, size_t size, char *restrict fmt, ...)
-{
+int ghost_snprintf(
+	char *restrict str,
+	size_t size,
+	const char *restrict fmt,
+	...
+) {
 	va_list args;
 	va_start(args, fmt);
 
