@@ -102,8 +102,8 @@ TEST_OBJ = $(O_TEST) $(O_COMMON) $(ASM_O)
 TEST_OBJ += $(filter-out %/shared.o, $(O_SO))
 
 MAIN_LIBS = -ldl -lpthread
-SO_LIBS = -lpthread
-TEST_LIBS =
+SO_LIBS = -lpthread -lm
+TEST_LIBS = $(SO_LIBS)
 
 BINARY := $(EXE_DIR)/$(PROJECT)
 SO := $(EXE_DIR)/$(PROJECT).so

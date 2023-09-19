@@ -413,7 +413,7 @@ int ghost_fflush(struct ghost_file *file)
 	return 0;
 }
 /*****************************************************************************/
-int ghost_ff_setvbuf(
+int ghost_setvbuf(
 	struct ghost_file *restrict f, char *restrict buf, int mode, size_t siz
 ) {
 	int e = ghost_fflush(f);
@@ -456,12 +456,12 @@ void ghost_setbuffer(
 	struct ghost_file *restrict f, char *restrict buf, size_t siz
 ) {
 	int mode = buf == NULL ? GHOST_IONBF : GHOST_IOFBF;
-	ghost_ff_setvbuf(f, buf, mode, siz);
+	ghost_setvbuf(f, buf, mode, siz);
 }
 /*****************************************************************************/
 void ghost_set_buf(struct ghost_file *restrict f, char *restrict buf) {
 	int mode = buf == NULL ? GHOST_IONBF : GHOST_IOFBF;
-	ghost_ff_setvbuf(f, buf, mode, GHOST_IO_BUF_SIZE);
+	ghost_setvbuf(f, buf, mode, GHOST_IO_BUF_SIZE);
 }
 /*****************************************************************************/
 struct ghost_file *ghost_tmpfile(void)
