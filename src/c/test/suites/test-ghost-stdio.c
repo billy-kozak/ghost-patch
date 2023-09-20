@@ -137,6 +137,9 @@ static bool test_signed_int_fmt(void)
 	char test_str[4096];
 	size_t size = sizeof(test_str);
 
+	ghost_snprintf(test_str, size, "%d", 0);
+	PUNIT_ASSERT(strcmp(test_str, "0") == 0);
+
 	ghost_snprintf(test_str, size, "%d", 12);
 	PUNIT_ASSERT(strcmp(test_str, "12") == 0);
 

@@ -860,10 +860,13 @@ static int emit_uint(
 
 	temp[idx] = '\0';
 
-	while(val != 0) {
-		idx -= 1;
-		temp[idx] = digi_char(val % base, upper);
-		val /= base;
+	if(val == 0) {
+	} else {
+		while(val != 0) {
+			idx -= 1;
+			temp[idx] = digi_char(val % base, upper);
+			val /= base;
+		}
 	}
 
 	char pad = arg->flags & FLAG_ZPAD ? '0' : ' ';
@@ -946,10 +949,15 @@ static int emit_int(
 
 	int m = val < 0 ? -1 : 1;
 
-	while(val != 0) {
+	if(val == 0) {
 		idx -= 1;
-		temp[idx] = digi_char((val % 10) * m, false);
-		val /= 10;
+		temp[idx] = '0';
+	} else {
+		while(val != 0) {
+			idx -= 1;
+			temp[idx] = digi_char((val % 10) * m, false);
+			val /= 10;
+		}
 	}
 
 	int n_width = sizeof(temp) - idx - 1 + strlen(sign);
