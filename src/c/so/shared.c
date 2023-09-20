@@ -28,6 +28,7 @@
 #include "application.h"
 #include "options.h"
 #include "secret-heap.h"
+#include "ghost-signals.h"
 #include <gio/ghost-stdio.h>
 
 #include <dlfcn.h>
@@ -53,6 +54,8 @@ static void do_special_setup(void)
 {
 	struct trace_entities ents;
 	struct trace_descriptor descr = pseudo_strace_descriptor();
+
+	ghost_signals_init();
 
 	if(start_trace(&descr, &ents)) {
 		perror("Unable to start trace");
