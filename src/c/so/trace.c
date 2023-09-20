@@ -288,6 +288,7 @@ static int trace_target(pid_t target_pid)
 		tracee_state_table_store(state_tab, state.pid, state.status);
 
 		if(state.status == PTRACE_EXEC_OCCURED) {
+			call_descriptor(&state);
 			ptrace(PTRACE_DETACH, state.pid, 0, 0);
 		} else if(ptrace(PTRACE_SYSCALL, state.pid, 0, sig) == -1) {
 			state.status = EXITED_UNEXPECTED;

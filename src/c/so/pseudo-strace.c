@@ -519,7 +519,6 @@ static void* handle(void *arg, const struct tracee_state *state)
 	if(state->status == STARTED) {
 		ghost_fprintf(fp, "[ID %d]: Started\n", state->pid);
 	} else if(state->status == SYSCALL_ENTER_STOP) {
-
 	} else if(state->status == SYSCALL_EXIT_STOP) {
 		print_syscall(fp, state->pid, &state->data.regs);
 	} else if(state->status == EXITED_NORMAL) {
@@ -529,6 +528,8 @@ static void* handle(void *arg, const struct tracee_state *state)
 			state->pid,
 			state->data.exit_status
 		);
+	} else if(state->status == PTRACE_EXEC_OCCURED) {
+		ghost_fprintf(fp, "[ID %d]: Called exec\n", state->pid);
 	}
 
 	return arg;
