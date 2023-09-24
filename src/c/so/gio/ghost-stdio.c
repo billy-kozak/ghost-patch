@@ -131,9 +131,11 @@ static int interp_mode(const char *restrict mode, struct fmode *p)
 /*****************************************************************************/
 static int get_rw_flags(struct fmode *mode)
 {
-	if(mode->flags & O_RDWR) {
+	int acc_mode = (mode->flags) & O_ACCMODE;
+
+	if(acc_mode == O_RDWR) {
 		return GIO_FLAG_READ | GIO_FLAG_WRITE;
-	} else if(mode->flags & O_RDONLY) {
+	} else if(acc_mode == O_RDONLY) {
 		return GIO_FLAG_READ;
 	} else {
 		return GIO_FLAG_WRITE;
@@ -143,11 +145,13 @@ static int get_rw_flags(struct fmode *mode)
 static struct ghost_file *internal_ghost_fdopen_into(
 	int fd, struct fmode fmode, struct ghost_file *file
 ) {
+	int acc_mode = (fmode.flags) & O_ACCMODE;
+
 	file->fd = fd;
 	file->flags = GIO_FLAG_SBUF | GIO_FLAG_OPEN;
 	file->flags |= get_rw_flags(&fmode);
 
-	if(fmode.flags & O_RDWR) {
+	if(acc_mode == O_RDWR) {
 
 		circ_buffer_init(
 			&file->wb,
@@ -160,7 +164,7 @@ static struct ghost_file *internal_ghost_fdopen_into(
 			(uint8_t*)(file->sys_buffer + GHOST_IO_BUF_SIZE / 2),
 			GHOST_IO_BUF_SIZE - (GHOST_IO_BUF_SIZE / 2)
 		);
-	} else if(fmode.flags & O_RDONLY) {
+	} else if(acc_mode == O_RDONLY) {
 
 		circ_buffer_init(
 			&file->rb,
@@ -478,6 +482,7 @@ struct ghost_file *ghost_tmpfile(void)
 int ghost_fgetc(struct ghost_file *f)
 {
 	if(!(f->flags & GIO_FLAG_READ)) {
+		f->err |= GIO_ERR_BAD_MODE;
 		return -1;
 	}
 
@@ -488,10 +493,11 @@ int ghost_fgetc(struct ghost_file *f)
 		return c;
 	}
 
-	uint8_t *rptr = circ_buffer_rptr(&f->rb);
-	size_t rcount = circ_buffer_contig_rsize(&f->rb);
+	uint8_t *wptr = circ_buffer_wptr(&f->rb);
+	size_t rcount = circ_buffer_contig_wsize(&f->rb);
 
-	int r = read(f->fd, rptr, rcount);
+	int r = read(f->fd, wptr, rcount);
+
 
 	if(r == 0) {
 		f->flags |= GIO_ERR_EOF;
@@ -500,7 +506,9 @@ int ghost_fgetc(struct ghost_file *f)
 		return -1;
 	}
 
+	circ_buffer_increment_used(&f->rb, r);
 	circ_buffer_read(&f->rb, &c, 1);
+
 	return c;
 }
 /*****************************************************************************/
@@ -523,6 +531,11 @@ size_t ghost_fread(
 ) {
 	size_t total = size * nmemb;
 	size_t pre_buffed = circ_buffer_used(&f->rb);
+
+	if(!(f->flags & GIO_FLAG_READ)) {
+		f->err |= GIO_ERR_BAD_MODE;
+		return 0;
+	}
 
 	if(pre_buffed >= total) {
 		return circ_buffer_read(&f->rb, dst, total);
@@ -675,7 +688,11 @@ int ghost_ferror(struct ghost_file *restrict f)
 /*****************************************************************************/
 int ghost_feof(struct ghost_file *restrict f)
 {
-	return !!(f->err & GIO_ERR_EOF);
+	if(!!(f->err & GIO_ERR_EOF)) {
+		return circ_buffer_used(&f->rb) == 0;
+	} else {
+		return 0;
+	}
 }
 /*****************************************************************************/
 int ghost_fseek(struct ghost_file *f, long offset, int whence)
