@@ -1,7 +1,0 @@
-#!/bin/bash
-
-DIR="$(cd "$(dirname $0)" && pwd -P)"
-
-for test in "${DIR}/../bin/tests/*"; do
-	${test}
-done
