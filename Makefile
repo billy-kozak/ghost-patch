@@ -121,6 +121,12 @@ INC_TEST += $(INC_COMMON) $(INC_SO)
 
 TEST_EXE = $(TEST_EXE_DIR)/ghost-patch-tests
 
+O_COMMON_DUMMY = $(BUILD_DIR)/.o_common.dummy
+O_SO_DUMMY = $(BUILD_DIR)/.o_so.dummy
+O_MAIN_DUMMY = $(BUILD_DIR)/.o_main.dummy
+O_TEST_DUMMY = $(BUILD_DIR)/.o_test.dummy
+O_ASM_DUMMY = $(BUILD_DIR)/.o_asm.dummy
+
 vpath %.c $(CSRC_DIRS)
 vpath %.S $(ASM_DIRS)
 
@@ -129,6 +135,7 @@ CLEAN_FILES += $(foreach dir,$(CSRC_DIRS),$(wildcard $(dir)/*\#))
 CLEAN_FILES += $(wildcard Makefile~)
 CLEAN_FILES += $(wildcard $(BUILD_DIR)/*) $(wildcard $(EXE_DIR)/*)
 CLEAN_FILES += $(wildcard $(ASM_GEN_DIR)/*)
+CLEAN_FILES += $(wildcard $(BUILD_DIR)/.o_*.dummy)
 ###############################################################################
 #                                   TARGETS                                   #
 ###############################################################################
@@ -159,19 +166,24 @@ asg_gen: CFLAGS += -fverbose-asm
 asm_gen: CFLAGS += -DNDEBUG=1 -march=native -Os -flto=auto
 asm_gen: $(ASM_GEN)
 
-common_o: CFLAGS += $(INC_COMMON)
-common_o: $(O_COMMON)
+$(O_COMMON_DUMMY): CFLAGS += $(INC_COMMON)
+$(O_COMMON_DUMMY): $(O_COMMON)
+	touch $(O_COMMON_DUMMY)
 
-main_o: CFLAGS += $(INC_MAIN)
-main_o: $(O_MAIN)
+$(O_MAIN_DUMMY): CFLAGS += $(INC_MAIN)
+$(O_MAIN_DUMMY): $(O_MAIN)
+	touch $(O_MAIN_DUMMY)
 
-so_o: CFLAGS += $(INC_SO)
-so_o: $(O_SO)
+$(O_SO_DUMMY): CFLAGS += $(INC_SO)
+$(O_SO_DUMMY): $(O_SO)
+	touch $(O_SO_DUMMY)
 
-test_o: CFLAGS += $(INC_TEST)
-test_o: $(O_TEST)
+$(O_TEST_DUMMY): CFLAGS += $(INC_TEST)
+$(O_TEST_DUMMY): $(O_TEST)
+	touch $(O_TEST_DUMMY)
 
-asm_o: $(ASM_O)
+$(O_ASM_DUMMY): $(ASM_O)
+	touch $(O_ASM_DUMMY)
 
 directories: $(BUILD_DIR)/.dir_dummy $(EXE_DIR)/.dir_dummy
 
@@ -206,13 +218,14 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)/.dir_dummy
 $(ASM_GEN): $(ASM_GEN_DIR)/%.s : %.c | $(ASM_GEN_DIR)/.dir_dummy
 	$(CC) $(CFLAGS) -S $< -o $@
 
-$(SO): common_o so_o asm_o | $(EXE_DIR)/.dir_dummy
+$(SO): $(O_COMMON_DUMMY) $(O_SO_DUMMY) $(O_ASM_DUMMY) | $(EXE_DIR)/.dir_dummy
 	$(LD) $(LDFLAGS) -pie  $(SO_OBJ) $(MAIN_LIBS) -o $@ -shared
 
-$(BINARY): common_o main_o | $(EXE_DIR)/.dir_dummy
+$(BINARY): $(O_COMMON_DUMMY) $(O_MAIN_DUMMY) | $(EXE_DIR)/.dir_dummy
 	$(LD) $(LDFLAGS) -pie  $(MAIN_OBJ) $(MAIN_LIBS) -o $@
 
-$(TEST_EXE): common_o so_o test_o asm_o | $(TEST_EXE_DIR)/.dir_dummy
+$(TEST_EXE): $(O_COMMON_DUMMY) $(O_SO_DUMMY)
+$(TEST_EXE): $(O_TEST_DUMMY) $(O_ASM_DUMMY) | $(TEST_EXE_DIR)/.dir_dummy
 	$(LD) $(LDFLAGS) $(TEST_OBJ) $(TEST_LIBS) -o $@
 
 clean:
