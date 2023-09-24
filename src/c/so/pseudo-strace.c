@@ -530,6 +530,8 @@ static void* handle(void *arg, const struct tracee_state *state)
 		);
 	} else if(state->status == PTRACE_EXEC_OCCURED) {
 		ghost_fprintf(fp, "[ID %d]: Called exec\n", state->pid);
+	} else if(state->status == EXITED_UNEXPECTED) {
+		ghost_fprintf(fp, "[ID %d]: Unexpected exit\n", state->pid);
 	}
 
 	return arg;

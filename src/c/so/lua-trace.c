@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
 *                                                                             *
@@ -19,72 +19,96 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "options.h"
+#include "lua-trace.h"
 
-#include <utl/str-utl.h>
-
-#include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
-#include <limits.h>
+#include <trace.h>
+#include <secret-heap.h>
+#include <assert.h>
+#include <lua/lualib.h>
+#include <lua/lauxlib.h>
 /******************************************************************************
-*                                  CONSTANTS                                  *
+*                                    TYPES                                    *
 ******************************************************************************/
-const char *OPTION_ENV_VAR = "GHOST_PATCH_OPTS";
-const char *FAKE_PID_FIELD = "fake_pid";
-const char *LUA_ENT_FIELD = "lua_ent";
+struct lua_trace_data {
+	lua_State *ls;
+	const char *ent;
+};
 /******************************************************************************
 *                                    DATA                                     *
 ******************************************************************************/
-static struct prog_opts cached_opts = DEFAULT_PROG_ARGS;
-static char lua_ent_opt[PATH_MAX + 1];
+static struct lua_trace_data trace_data;
+/******************************************************************************
+*                              STATIC FUNCTIONS                               *
+******************************************************************************/
+static void *alloc_f(void *ud, void *ptr, size_t osize, size_t nsize)
+{
+	struct ghost_heap *heap = ud;
+
+	if(nsize == 0) {
+		ghost_free(heap, ptr);
+		return NULL;
+	} else {
+		return ghost_realloc(heap, ptr, nsize);
+	}
+}
+/*****************************************************************************/
+static void *handler(void *arg, const struct tracee_state *state)
+{
+	return arg;
+}
+/*****************************************************************************/
+static void *handler_init(void *arg)
+{
+	int err;
+	lua_State *ls = lua_newstate(alloc_f, sheap);
+	trace_data.ls = ls;
+
+	assert(trace_data.ls != NULL);
+
+	luaL_openlibs(ls);
+	err = luaL_loadfile(ls, trace_data.ent);
+
+	if(err != LUA_OK) {
+		if(err == LUA_ERRFILE) {
+			ghost_fprintf(
+				ghost_stderr,
+				"Error opening file: %s\n",
+				trace_data.ent
+			);
+		} else {
+			ghost_fprintf(
+				ghost_stderr,
+				"Error loading lua entry point: %d\n",
+				err
+			);
+		}
+		abort();
+		return NULL;
+	}
+
+	err = lua_pcall(ls, 0, 0, 0);
+	if(err != LUA_OK) {
+		ghost_fprintf(ghost_stderr, "Error running lua entry point\n");
+		abort();
+		return NULL;
+	}
+
+	return arg;
+}
 /******************************************************************************
 *                            FUNCTION DEFINITIONS                             *
 ******************************************************************************/
-int get_options(struct prog_opts *opts)
+struct trace_descriptor lua_trace_descriptor(const char *ent)
 {
-	const char *env_str;
-	const char *sptr;
+	struct trace_descriptor descr;
 
-	env_str = getenv(OPTION_ENV_VAR);
-	sptr = env_str;
+	descr.init = handler_init;
+	descr.handle = handler;
+	descr.arg = &trace_data;
 
-	if(env_str == NULL) {
-		memcpy(opts, &cached_opts, sizeof(cached_opts));
-		return -1;
-	}
+	trace_data.ent = ent;
+	trace_data.ls = NULL;
 
-	memset(opts, 0, sizeof(*opts));
-
-	size_t flen = 0;
-
-	while(*sptr != '\0') {
-		if(strdcmp(sptr, FAKE_PID_FIELD, '=') == 0) {
-			sptr += strlen(FAKE_PID_FIELD) + 1;
-
-			if(strdcmp(sptr, "true", ';') == 0) {
-				opts->fake_pid = true;
-				sptr += sizeof("true");
-			} else if(strdcmp(sptr, "false", ';') == 0) {
-				opts->fake_pid = false;
-				sptr += sizeof("false");
-			} else {
-				return -1;
-			}
-		} else if(strdcmp(sptr, LUA_ENT_FIELD, '=') == 0) {
-			sptr += strlen(LUA_ENT_FIELD) + 1;
-			flen = strdcpy(lua_ent_opt, sptr, ';', PATH_MAX + 1);
-
-			if(sptr[flen] != ';') {
-				return -1;
-			}
-			opts->lua_ent = lua_ent_opt;
-			sptr += flen + 1;
-		} else {
-			return -1;
-		}
-	}
-
-	return 0;
+	return descr;
 }
 /*****************************************************************************/

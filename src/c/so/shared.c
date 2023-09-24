@@ -25,6 +25,7 @@
 #include "trace.h"
 #include "syscall-utl.h"
 #include "pseudo-strace.h"
+#include "lua-trace.h"
 #include "application.h"
 #include "options.h"
 #include "secret-heap.h"
@@ -53,15 +54,20 @@ static sigjmp_buf jump_buffer;
 static void do_special_setup(void)
 {
 	struct trace_entities ents;
-	struct trace_descriptor descr = pseudo_strace_descriptor();
+	struct trace_descriptor descr;
 
+	get_options(&cached_opts);
 	ghost_signals_init();
+
+	if(cached_opts.lua_ent == NULL) {
+		descr = pseudo_strace_descriptor();
+	} else {
+		descr = lua_trace_descriptor(cached_opts.lua_ent);
+	}
 
 	if(start_trace(&descr, &ents)) {
 		perror("Unable to start trace");
 	}
-
-	get_options(&cached_opts);
 
 	parent_pid = ents.parent;
 	child_pid = ents.child;

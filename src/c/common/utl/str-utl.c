@@ -64,44 +64,29 @@ int strdcmp(const char *s1, const char *s2, char delim)
 	return -1;
 }
 /*****************************************************************************/
-char *concatenate_n_strings(size_t count, ...)
+int strdcpy(char *dst, const char *src, char delim, size_t size)
 {
-	va_list argp;
-
-	char *ret = NULL;
-	char *writeptr = NULL;
-	size_t len = 1;
-
-	char **strings = calloc(count, sizeof(*strings));
-	if(strings == NULL) {
-		goto exit;
+	size_t i;
+	for(i = 0; i < (size - 1); i++) {
+		if(src[i] == delim || src[i] == '\0') {
+			break;
+		}
+		dst[i] = src[i];
 	}
 
-	va_start(argp, count);
-
-	for(size_t i = 0; i < count; i++) {
-		strings[i] = va_arg(argp, char*);
-		len += strlen(strings[i]);
+	dst[i] = '\0';
+	return i;
+}
+/*****************************************************************************/
+size_t strdlen(const char *s, char delim)
+{
+	size_t i;
+	for(i = 0; s[i] != '\0'; i++) {
+		if(s[i] == delim) {
+			return i;
+		}
 	}
-
-	va_end(argp);
-
-	ret = calloc(len, sizeof(*ret));
-	if(ret == NULL) {
-		goto exit;
-	}
-	writeptr = ret;
-
-	for(size_t i = 0; i < count; i++) {
-		size_t len = strlen(strings[i]);
-
-		memcpy(writeptr, strings[i], len);
-		writeptr += len;
-	}
-
-exit:
-	free(strings);
-	return ret;
+	return i;
 }
 /*****************************************************************************/
 struct lstring str_utl_tok_and_sqz(

@@ -22,7 +22,10 @@
 #include <proc-utl.h>
 #include <debug-modes.h>
 #include <options.h>
+#include <set-options.h>
+#include <str-utl-libc.h>
 #include <utl/str-utl.h>
+#include <str-utl-libc.h>
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -36,25 +39,27 @@
 ******************************************************************************/
 static const struct option GETOPT_OPTIONS[] = {
 	{"real-pid", no_argument, NULL, 'p'},
+	{"lua", required_argument, NULL, 'l'},
 	{"help", no_argument, NULL, 'h'},
 	{NULL, 0, 0, 0}
 };
-static const char OPT_STRING[] = "+hp";
+static const char OPT_STRING[] = "+hpl:";
 static const char HELP_TEXT[] =
 	"Start a thread in the target program to ptrace the target.\n"
 	"\n"
 	"Options:\n"
-	"-h,  --help     Display this help text\n"
-	"-p, --real-pid  Don't fake the process ID of the target process.\n"
-	"                This programs runs the target in a child process\n"
-	"                means that the output of the getpid() system call\n"
-	"                will appear to be inconsistent with the pid given\n"
-	"                by the parent process' call to clone() or fork().\n"
-	"                To get around this, by default this program\n"
-	"                intercepts the getpid() system call in order to\n"
-	"                make it appear that the target process has the pid\n"
-	"                of it's parent. This option disables this\n"
-	"                behaviour.\n";
+	"-h,  --help      Display this help text.\n"
+	"--lua=<LUA_PATH> Path to lua script to run for trace.\n"
+	"-p, --real-pid   Don't fake the process ID of the target process.\n"
+	"                 This programs runs the target in a child process\n"
+	"                 means that the output of the getpid() system call\n"
+	"                 will appear to be inconsistent with the pid given\n"
+	"                 by the parent process' call to clone() or fork().\n"
+	"                 To get around this, by default this program\n"
+	"                 intercepts the getpid() system call in order to\n"
+	"                 make it appear that the target process has the pid\n"
+	"                 of it's parent. This option disables this\n"
+	"                 behaviour.\n";
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
@@ -86,6 +91,9 @@ static int parse_arguments(int argc, char **argv, struct prog_opts *aptr)
 			break;
 		case 'p':
 			aptr->fake_pid = false;
+			break;
+		case 'l':
+			aptr->lua_ent = optarg;
 			break;
 		case '?':
 			flag = false;

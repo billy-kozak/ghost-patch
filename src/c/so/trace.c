@@ -193,6 +193,8 @@ static int only_wait_for_exit(pid_t target_pid)
 /*****************************************************************************/
 static int trace_target(pid_t target_pid)
 {
+	int ret = -1;
+
 	struct tracee_state state;
 	int status;
 
@@ -264,6 +266,7 @@ static int trace_target(pid_t target_pid)
 
 			state.data.pt_event = extract_ptrace_event(status);
 
+
 			if(state.data.pt_event == PTRACE_EVENT_EXEC) {
 				state.status = PTRACE_EXEC_OCCURED;
 			} else if(state.data.pt_event == PTRACE_EVENT_CLONE) {
@@ -300,7 +303,7 @@ static int trace_target(pid_t target_pid)
 		}
 	}
 
-	return -1;
+	return ret;
 }
 /*****************************************************************************/
 static int start_monitor(void)

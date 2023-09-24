@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
 *                                                                             *
@@ -16,36 +16,15 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
-#ifndef STR_UTL_H
-#define STR_UTL_H
+#ifndef SET_OPTIONS_H
+#define SET_OPTIONS_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include <stdlib.h>
-#include <stdbool.h>
-
-#include "misc-macros.h"
-/******************************************************************************
-*                                    TYPES                                    *
-******************************************************************************/
-struct lstring {
-	size_t len;
-	char *str;
-};
+#include <options.h>
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-char *int_to_string(int i);
-const char *bool_to_string(bool val);
-int strdcmp(const char *s1, const char *s2, char delim);
-int strdcpy(char *dst, const char *src, char delim, size_t size);
-size_t strdlen(const char *s, char delim);
-struct lstring str_utl_tok_and_sqz(
-	const char *s,
-	size_t len,
-	char delim,
-	const char **saveptr
-);
-int lstring_cmp(const struct lstring *ls, const char *s);
+int set_options(const struct prog_opts *opts);
 /*****************************************************************************/
-#endif /* STR_UTL_H */
+#endif /* SET_OPTIONS_H */

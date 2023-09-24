@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
 *                                                                             *
@@ -19,26 +19,61 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include "proc-utl.h"
-#include "path-utl.h"
+#include "set-options.h"
 
+#include <options.h>
+#include <str-utl-libc.h>
 #include <utl/str-utl.h>
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdio.h>
+#include <string.h>
 /******************************************************************************
-*                            FUNCTION DECLARATIONS                            *
+*                                    DATA                                     *
 ******************************************************************************/
-char *this_executable(void)
+static struct prog_opts cached_opts = DEFAULT_PROG_ARGS;
+/******************************************************************************
+*                            FUNCTION DEFINITIONS                             *
+******************************************************************************/
+int set_options(const struct prog_opts *opts)
 {
-	char *str_pid = int_to_string(getpid());
-	char *sym_path = concatenate_strings("/proc/", str_pid, "/exe");
-	char *exe_path = safe_resolve_symlink(sym_path);
+	int ret = 0;
+	char *env_str = NULL;
 
-	free(str_pid);
-	free(sym_path);
+	env_str = concatenate_strings(
+		FAKE_PID_FIELD,
+		"=",
+		bool_to_string(opts->fake_pid),
+		";"
+	);
 
-	return exe_path;
+	if(env_str == NULL) {
+		ret = -1;
+		goto exit;
+	}
+
+	if(opts->lua_ent != NULL) {
+		char *tmp = append_to_dyn_str(
+			NULL,
+			env_str,
+			LUA_ENT_FIELD,
+			"=",
+			opts->lua_ent,
+			";"
+		);
+		if(tmp == NULL) {
+			ret = -1;
+			goto exit;
+		}
+		env_str = tmp;
+	}
+
+	if(setenv(OPTION_ENV_VAR, env_str, 1)) {
+		ret = -1;
+		goto exit;
+	}
+
+	memcpy(&cached_opts, opts, sizeof(cached_opts));
+exit:
+	free(env_str);
+	return ret;
 }
 /*****************************************************************************/

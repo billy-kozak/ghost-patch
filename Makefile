@@ -142,21 +142,21 @@ tests: CFLAGS += -DDEBUG=1 -g -O0
 tests: $(TEST_EXE)
 
 fast_tests: $(BUILD_TEST_DIR)/.dir_dummy
-fast_tests: CFLAGS += -DNDEBUG=1 -march=native -Os -flto
-fast_tests: LDFLAGS += -march=native -Os -flto
+fast_tests: CFLAGS += -DNDEBUG=1 -march=native -Os -flto=auto
+fast_tests: LDFLAGS += -march=native -Os -flto=auto
 fast_tests: $(TEST_EXE)
 
 debug: CFLAGS += -DDEBUG=1 -g -O0
 debug: $(BINARY)
 debug: $(SO)
 
-optomized: CFLAGS += -DNDEBUG=1 -march=native -Os -flto
-optomized: LDFLAGS += -march=native -Os -flto
+optomized: CFLAGS += -DNDEBUG=1 -march=native -Os -flto=auto
+optomized: LDFLAGS += -march=native -Os -flto=auto
 optomized: $(BINARY)
 optomized: $(SO)
 
 asg_gen: CFLAGS += -fverbose-asm
-asm_gen: CFLAGS += -DNDEBUG=1 -march=native -Os -flto
+asm_gen: CFLAGS += -DNDEBUG=1 -march=native -Os -flto=auto
 asm_gen: $(ASM_GEN)
 
 common_o: CFLAGS += $(INC_COMMON)
