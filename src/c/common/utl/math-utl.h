@@ -86,7 +86,7 @@ static inline uint64_t circ_sub_u64(uint64_t x, uint64_t y, uint64_t mod)
 	if(x >= y) {
 		return (x - y) % mod;
 	} else {
-		return mod - ((y - x) % mod);
+		return mod - ((y - x) % (mod + 1));
 	}
 }
 /*****************************************************************************/
