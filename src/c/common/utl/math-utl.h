@@ -81,12 +81,18 @@ static inline int print_width_uint_max_t(int base)
 	return width;
 }
 /*****************************************************************************/
+static inline uint64_t mod_high_u64(uint64_t u, uint64_t d)
+{
+	uint64_t m = u % d;
+	return m == 0 ? d : m;
+}
+/*****************************************************************************/
 static inline uint64_t circ_sub_u64(uint64_t x, uint64_t y, uint64_t mod)
 {
 	if(x >= y) {
 		return (x - y) % mod;
 	} else {
-		return mod - ((y - x) % (mod + 1));
+		return mod - (mod_high_u64((y - x) , mod));
 	}
 }
 /*****************************************************************************/
