@@ -136,6 +136,8 @@ struct output_file {
 #define FMT_ARG_LIST_INIT_LEN 8
 
 #define PREC_UNDEF INT_MIN
+
+#define DYN_STR_INIT_LEN 1024
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
@@ -1126,6 +1128,23 @@ static void emit_to_fixed_string(void *arg, char c)
 	}
 }
 /*****************************************************************************/
+static void emit_to_dyn_str(void *arg, char c)
+{
+	struct output_str *ostr = (struct output_str*)arg;
+
+	if(ostr->i >= ostr->len) {
+		ostr->len *= 2;
+		ostr->str = ghost_realloc(sheap, ostr->str, ostr->len);
+	}
+
+	if(ostr->str == NULL) {
+		return;
+	}
+
+	ostr->str[ostr->i] = c;
+	ostr->i += 1;
+}
+/*****************************************************************************/
 static void emit_to_file(void *arg, char c)
 {
 	struct output_file *of = arg;
@@ -1219,6 +1238,51 @@ int ghost_snprintf(
 			ostr.str[ostr.i] = '\0';
 			ostr.i += 1;
 		}
+		ret = ostr.i;
+	}
+
+	va_end(args);
+
+	return ret;
+}
+/*****************************************************************************/
+int ghost_sdprintf(
+	char **str,
+	size_t size,
+	const char *restrict fmt,
+	...
+) {
+	struct output_str ostr;
+	va_list args;
+
+	va_start(args, fmt);
+
+	int ret = 0;
+
+	if(size == 0) {
+		assert(str == NULL);
+
+		size = DYN_STR_INIT_LEN;
+		*str = ghost_malloc(sheap, size);
+	}
+
+	if(*str == NULL) {
+		return -1;
+	}
+
+	ostr.str = *str;
+	ostr.i = 0;
+	ostr.len = size;
+
+
+	fmt_write(fmt, emit_to_dyn_str, &ostr, args);
+
+	if(ostr.str == NULL) {
+		ret = -1;
+	} else {
+		ostr.str[ostr.i] = '\0';
+		ostr.i += 1;
+
 		ret = ostr.i;
 	}
 

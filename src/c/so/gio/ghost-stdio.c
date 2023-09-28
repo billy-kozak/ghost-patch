@@ -498,7 +498,6 @@ int ghost_fgetc(struct ghost_file *f)
 
 	int r = read(f->fd, wptr, rcount);
 
-
 	if(r == 0) {
 		f->flags |= GIO_ERR_EOF;
 		return GHOST_EOF;
@@ -531,6 +530,7 @@ size_t ghost_fread(
 ) {
 	size_t total = size * nmemb;
 	size_t pre_buffed = circ_buffer_used(&f->rb);
+
 
 	if(!(f->flags & GIO_FLAG_READ)) {
 		f->err |= GIO_ERR_BAD_MODE;

@@ -266,7 +266,6 @@ static int trace_target(pid_t target_pid)
 
 			state.data.pt_event = extract_ptrace_event(status);
 
-
 			if(state.data.pt_event == PTRACE_EVENT_EXEC) {
 				state.status = PTRACE_EXEC_OCCURED;
 			} else if(state.data.pt_event == PTRACE_EVENT_CLONE) {

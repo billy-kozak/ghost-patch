@@ -71,6 +71,12 @@ int ghost_snprintf(
 	const char *restrict fmt,
 	...
 );
+int ghost_sdprintf(
+	char **str,
+	size_t size,
+	const char *restrict fmt,
+	...
+);
 int ghost_fflush(struct ghost_file *file);
 void ghost_stdio_init(void);
 void ghost_stdio_cleanup(void);
