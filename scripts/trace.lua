@@ -46,8 +46,34 @@ local function syscall_arg(uregs, arg)
 	end
 end
 
+local function format_syscall(pid, syscall, ret, ...)
+	local args={...}
 
-local function print_syscall(uregs)
+	local alist
+
+	if #(args) ~= 0 then
+		alist = tostring(args[1])
+	else
+		alist = ""
+	end
+
+	for i=2, #(args) do
+		alist = alist .. ", " .. args[i]
+	end
+
+	return (
+		"[ID: " .. pid .. "] " ..
+		syscall .. "(" .. alist .. ") = " .. ret
+	)
+end
+
+local function printf_syscall(pid, syscall, ret, ...)
+	local args = {...}
+
+	print(format_syscall(pid, syscall, ret, table.unpack(args)))
+end
+
+local function print_syscall(pid, uregs)
 
 	local no = syscall_no(uregs)
 	local ret = syscall_retval(uregs)
@@ -56,15 +82,15 @@ local function print_syscall(uregs)
 	elseif no == SYS_write then
 	elseif no == SYS_open then
 	elseif no == SYS_close then
-		print("close("..syscall_arg(uregs, 0)..") = "..ret)
+		printf_syscall(pid, "close", ret, syscall_arg(uregs, 0))
 	else
-		print("syscall("..no..", ...) = "..ret)
+		print("[ID: "..pid.."] syscall("..no..", ...) = "..ret)
 	end
 end
 
-local function handle_ev(ev, uregs)
+local function handle_ev(ev, pid, uregs)
 	if ev == LT_SYSCALL_EXIT then
-		print_syscall(uregs)
+		print_syscall(pid, uregs)
 	 end
 end
 

@@ -140,7 +140,7 @@ static void push_lua_uregs(
 	insert_int64_to_table(ls, i, "ds", uregs->ds);
 	insert_int64_to_table(ls, i, "es", uregs->es);
 	insert_int64_to_table(ls, i, "fs", uregs->fs);
-	insert_int64_to_table(ls, 3, "gs", uregs->gs);
+	insert_int64_to_table(ls, i, "gs", uregs->gs);
 }
 /*****************************************************************************/
 static void setup_lua_runtime(const struct lua_trace_data *dat)
@@ -186,11 +186,19 @@ static void *handler(void *arg, const struct tracee_state *state)
 	lua_rawgeti(ls, LUA_REGISTRYINDEX, dat->lua_cb_ref);
 
 	lua_pushinteger(ls, state->status);
-
+	lua_pushinteger(ls, state->pid);
 	push_lua_uregs(ls, uregs);
 
+	int err = lua_pcall(ls, 3, 0, 0);
 
-	lua_pcall(ls, 2, 0, 0);
+	if(err != LUA_OK) {
+		const char *err_msg = lua_tostring(ls, -1);
+		ghost_fprintf(
+			ghost_stderr,
+			"Error in lua callback: %s\n",
+			err_msg
+		);
+	}
 
 	return arg;
 }
