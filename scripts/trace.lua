@@ -22,8 +22,22 @@ SYS_read = 0
 SYS_write = 1
 SYS_open = 2
 SYS_close = 3
+SYS_stat = 4
+SYS_fstat = 5
+SYS_lstat = 6
+SYS_poll = 7
+SYS_lseek = 8
 SYS_mmap = 9
+SYS_mprotect = 10
 SYS_munmap = 11
+SYS_brk = 12
+SYS_rt_sigaction = 13
+SYS_rt_sigprocmask = 14
+SYS_rt_sigreturn = 15
+SYS_ioctl = 16
+SYS_writev = 20
+SYS_alarm = 37
+SYS_recvmsg = 47
 SYS_fadvise64 = 221
 SYS_clock_nanosleep = 230
 SYS_openat = 257
@@ -201,13 +215,174 @@ local function print_sys_munmap(pid, ret, uregs)
 	)
 end
 
+local function print_sys_stat(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"stat",
+		ret,
+		LT_fmt_cstr(syscall_arg(uregs, 0), PRINT_SIZE),
+		format_addr(syscall_arg(uregs, 1))
+	)
+end
+
+local function print_sys_fstat(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"fstat",
+		ret,
+		syscall_arg(uregs, 0),
+		format_addr(syscall_arg(uregs, 1))
+	)
+end
+
+local function print_sys_lstat(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"lstat",
+		ret,
+		LT_fmt_cstr(syscall_arg(uregs, 0), PRINT_SIZE),
+		format_addr(syscall_arg(uregs, 1))
+	)
+end
+
+local function print_sys_poll(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"poll",
+		ret,
+		format_addr(syscall_arg(uregs, 0)),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2)
+	)
+end
+
+local function print_sys_lseek(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"lseek",
+		ret,
+		syscall_arg(uregs, 0),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2)
+	)
+end
+
+local function print_sys_mprotect(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"mprotect",
+		ret,
+		syscall_arg(uregs, 0),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2)
+	)
+end
+
+local function print_sys_brk(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"brk",
+		ret,
+		syscall_arg(uregs, 0)
+	)
+end
+
+local function print_sys_rt_sigaction(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"rt_sigaction",
+		ret,
+		syscall_arg(uregs, 0),
+		format_addr(syscall_arg(uregs, 1)),
+		format_addr(syscall_arg(uregs, 2)),
+		syscall_arg(uregs, 3)
+	)
+end
+
+local function print_sys_rt_sigprocmask(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"rt_sigprocmask",
+		ret,
+		syscall_arg(uregs, 0),
+		format_addr(syscall_arg(uregs, 1)),
+		format_addr(syscall_arg(uregs, 2)),
+		syscall_arg(uregs, 3)
+	)
+end
+
+local function print_sys_recvmsg(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"recvmsg",
+		ret,
+		syscall_arg(uregs, 0),
+		format_addr(syscall_arg(uregs, 1)),
+		syscall_arg(uregs, 2)
+	)
+end
+
+local function print_sys_alarm(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"alarm",
+		ret,
+		syscall_arg(uregs, 0)
+	)
+end
+
+local function print_sys_rt_sigreturn(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"rt_sigreturn",
+		ret,
+		syscall_arg(uregs, 0)
+	)
+end
+
+local function print_sys_ioctl(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"ioctl",
+		ret,
+		syscall_arg(uregs, 0),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2)
+	)
+end
+
+local function print_sys_writev(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"writev",
+		ret,
+		syscall_arg(uregs, 0),
+		format_addr(syscall_arg(uregs, 1)),
+		syscall_arg(uregs, 2)
+	)
+end
+
 local syscall_print_tbl = {
 	[SYS_read] = print_sys_read,
 	[SYS_write] = print_sys_write,
 	[SYS_open] = print_sys_open,
 	[SYS_close] = print_sys_close,
+	[SYS_stat] = print_sys_stat,
+	[SYS_fstat] = print_sys_fstat,
+	[SYS_lstat] = print_sys_lstat,
+	[SYS_poll] = print_sys_poll,
+	[SYS_lseek] = print_sys_lseek,
 	[SYS_mmap] = print_sys_mmap,
+	[SYS_mprotect] = print_sys_mprotect,
 	[SYS_munmap] = print_sys_munmap,
+	[SYS_brk] = print_sys_brk,
+	[SYS_rt_sigaction] = print_sys_rt_sigaction,
+	[SYS_rt_sigprocmask] = print_sys_rt_sigprocmask,
+	[SYS_rt_sigreturn] = print_sys_rt_sigreturn,
+	[SYS_ioctl] = print_sys_ioctl,
+	[SYS_writev] = print_sys_writev,
+	[SYS_alarm] = print_sys_alarm,
+	[SYS_recvmsg] = print_sys_recvmsg,
 	[SYS_fadvise64] = print_sys_fadvise64,
 	[SYS_clock_nanosleep] = print_sys_clock_nanosleep,
 	[SYS_openat] = print_sys_openat,
