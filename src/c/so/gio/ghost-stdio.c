@@ -408,11 +408,16 @@ int ghost_fflush(struct ghost_file *file)
 	w_len = circ_buffer_contig_rsize(&file->wb);
 	rptr = circ_buffer_rptr(&file->wb);
 
+	assert(rptr == file->wb.buf);
+
 	w = write(file->fd, rptr, w_len);
 
 	if(w < 0) {
 		return -1;
 	}
+	circ_buffer_decrement_used(&file->wb, w);
+
+	assert((w == w_len) == (circ_buffer_used(&file->wb) == 0));
 
 	return 0;
 }
@@ -670,6 +675,7 @@ size_t ghost_fwrite(
 		} else if(w == 0) {
 			return total_written;
 		}
+		circ_buffer_decrement_used(&f->wb, w);
 		flush_count -= w;
 	}
 
