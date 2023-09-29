@@ -23,8 +23,11 @@ SYS_write = 1
 SYS_open = 2
 SYS_close = 3
 SYS_mmap = 9
+SYS_munmap = 11
+SYS_fadvise64 = 221
 SYS_clock_nanosleep = 230
 SYS_openat = 257
+SYS_newfstat = 262
 
 local function syscall_no(uregs)
 	return uregs.orig_rax
@@ -108,8 +111,8 @@ local function print_sys_clock_nanosleep(pid, ret, uregs)
 			ret,
 			syscall_arg(uregs, 0),
 			syscall_arg(uregs, 1),
-			string.format("0x%x", syscall_arg(uregs, 2)),
-			string.format("0x%x", syscall_arg(uregs, 3))
+			format_addr(syscall_arg(uregs, 2)),
+			format_addr(syscall_arg(uregs, 3))
 	)
 end
 
@@ -121,9 +124,9 @@ local function print_sys_read(pid, ret, uregs)
 	printf_syscall(
 		pid,
 		"read",
-		ret.."("..LT_fmt_buffer(addr, len, PRINT_SIZE)..")",
+		ret.." ("..LT_fmt_buffer(addr, ret, PRINT_SIZE)..")",
 		syscall_arg(uregs, 0),
-		string.format("0X%x", addr),
+		format_addr(addr),
 		len
 	)
 end
@@ -165,14 +168,50 @@ local function print_sys_openat(pid, ret, uregs)
 	)
 end
 
+local function print_sys_newfstatat(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"newfstatat",
+		ret,
+		syscall_arg(uregs, 0),
+		LT_fmt_cstr(syscall_arg(uregs, 1), PRINT_SIZE),
+		format_addr(syscall_arg(uregs, 2))
+	)
+end
+
+local function print_sys_fadvise64(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"fadvise64",
+		ret,
+		syscall_arg(uregs, 0),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2),
+		syscall_arg(uregs, 3)
+	)
+end
+
+local function print_sys_munmap(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"munmap",
+		ret,
+		format_addr(syscall_arg(uregs, 0)),
+		syscall_arg(uregs, 1)
+	)
+end
+
 local syscall_print_tbl = {
 	[SYS_read] = print_sys_read,
 	[SYS_write] = print_sys_write,
 	[SYS_open] = print_sys_open,
 	[SYS_close] = print_sys_close,
 	[SYS_mmap] = print_sys_mmap,
+	[SYS_munmap] = print_sys_munmap,
+	[SYS_fadvise64] = print_sys_fadvise64,
 	[SYS_clock_nanosleep] = print_sys_clock_nanosleep,
-	[SYS_openat] = print_sys_openat
+	[SYS_openat] = print_sys_openat,
+	[SYS_newfstat] = print_sys_newfstatat
 }
 
 local function print_syscall(pid, uregs)
