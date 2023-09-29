@@ -56,6 +56,24 @@ static int repr_byte(char *str, char byte, ssize_t *space_size)
 			*space_size -= 2;
 			return 2;
 		}
+	} else if(byte == '\b') {
+		if(*space_size < 2) {
+			return 0;
+		} else {
+			str[0] = '\\';
+			str[1] = 'b';
+			*space_size -= 2;
+			return 2;
+		}
+	} else if(byte == '\r') {
+		if(*space_size < 2) {
+			return 0;
+		} else {
+			str[0] = '\\';
+			str[1] = 'r';
+			*space_size -= 2;
+			return 2;
+		}
 	} else if(isprint(byte) || (byte == '\t')) {
 		if(*space_size == 0) {
 			return 0;
