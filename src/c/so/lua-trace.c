@@ -22,6 +22,8 @@
 #include "lua-trace.h"
 #include "lua/lua.h"
 
+
+#include <trace-print-tools.h>
 #include <trace.h>
 #include <secret-heap.h>
 #include <assert.h>
@@ -29,6 +31,8 @@
 
 #include <lua/lualib.h>
 #include <lua/lauxlib.h>
+
+#include <string.h>
 /******************************************************************************
 *                                    TYPES                                    *
 ******************************************************************************/
@@ -41,6 +45,9 @@ struct lua_trace_data {
 *                                  CONSTANTS                                  *
 ******************************************************************************/
 const char LUA_TRACE_INIT_F[] = "LT_init";
+const char LUA_READ_CSTR_F[] = "LT_read_cstr";
+const char LUA_FMT_BUFFER_F[] = "LT_fmt_buffer";
+const char LUA_FMT_STR_F[] = "LT_fmt_cstr";
 /******************************************************************************
 *                                    DATA                                     *
 ******************************************************************************/
@@ -48,41 +55,191 @@ static struct lua_trace_data trace_data;
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
+static void arg_num_err(
+	lua_State *ls, char **s, const char *name, int expected, int actual
+) {
+	ghost_sdprintf(
+		s,
+		0,
+		(
+			"%s: Wrong number of arguments. "
+			"Expected %d, recieved %d."
+		),
+		name,
+		expected,
+		actual
+	);
+	lua_pushstring(ls, *s);
+	lua_error(ls);
+}
+/*****************************************************************************/
+static void arg_type_err(
+	lua_State *ls,
+	char **s,
+	const char *name,
+	int anum,
+	int aindex,
+	const char *expected
+) {
+	ghost_sdprintf(
+		s,
+		0,
+		(
+			"%s: Argument %d type error, "
+			"required %s, recieved %s."
+		),
+		name,
+		anum,
+		expected,
+		lua_typename(ls, aindex)
+	);
+	lua_pushstring(ls, *s);
+	lua_error(ls);
+}
+/*****************************************************************************/
+static int pop_int(lua_State *ls, int64_t *i)
+{
+	if(lua_isinteger(ls, -1)) {
+		*i = lua_tointeger(ls, -1);
+		lua_pop(ls, 1);
+		return 0;
+	} else {
+		return 1;
+	}
+}
+/*****************************************************************************/
+static int luaf_lt_fmt_cstr(lua_State *ls)
+{
+	int stack_size = lua_gettop(ls);
+	char *err = NULL;
+	char *repr = NULL;
+
+	int ret = 0;
+
+	if(stack_size != 2) {
+		arg_num_err(ls, &err, LUA_FMT_STR_F, 2, stack_size);
+		goto exit;
+	}
+
+	union {
+		int64_t i;
+		const char *p;
+	} buf_union;
+
+	int64_t buf_size;
+	int64_t print_size;
+
+	if(pop_int(ls, &print_size) != 0) {
+		arg_type_err(ls, &err, LUA_FMT_STR_F, 2, -1, "integer");
+		goto exit;
+	}
+	if(pop_int(ls, &buf_union.i) != 0) {
+		arg_type_err(ls, &err, LUA_FMT_STR_F, 1, -1, "integer");
+		goto exit;
+	}
+
+	ret = 1;
+
+	buf_size = strlen(buf_union.p);
+
+	repr = ghost_malloc(sheap, print_size + 1);
+	sprint_buffer(buf_union.p, repr, buf_size, print_size + 1);
+
+	lua_pushstring(ls, repr);
+exit:
+	ghost_free(sheap, repr);
+	ghost_free(sheap, err);
+	return ret;
+}
+/*****************************************************************************/
+static int luaf_lt_fmt_buffer(lua_State *ls)
+{
+	int stack_size = lua_gettop(ls);
+	char *err = NULL;
+	char *repr = NULL;
+
+	int ret = 0;
+
+	if(stack_size != 3) {
+		arg_num_err(ls, &err, LUA_FMT_BUFFER_F, 3, stack_size);
+		goto exit;
+	}
+
+	union {
+		int64_t i;
+		const char *p;
+	} buf_union;
+
+	int64_t buf_size;
+	int64_t print_size;
+
+	if(pop_int(ls, &print_size) != 0) {
+		arg_type_err(ls, &err, LUA_FMT_BUFFER_F, 3, -1, "integer");
+		goto exit;
+	}
+	if(pop_int(ls, &buf_size) != 0) {
+		arg_type_err(ls, &err, LUA_FMT_BUFFER_F, 2, -1, "integer");
+		goto exit;
+	}
+	if(pop_int(ls, &buf_union.i) != 0) {
+		arg_type_err(ls, &err, LUA_FMT_BUFFER_F, 1, -1, "integer");
+		goto exit;
+	}
+
+	ret = 1;
+
+	repr = ghost_malloc(sheap, print_size + 1);
+	sprint_buffer(buf_union.p, repr, buf_size, print_size + 1);
+
+	lua_pushstring(ls, repr);
+exit:
+	ghost_free(sheap, repr);
+	ghost_free(sheap, err);
+	return ret;
+}
+/*****************************************************************************/
+static int luaf_lt_read_cstr(lua_State *ls)
+{
+	int stack_size = lua_gettop(ls);
+	char *err = NULL;
+	int ret = 0;
+
+	union {
+		int64_t i;
+		const char *str;
+	} u;
+
+
+	if(stack_size != 1) {
+		arg_num_err(ls, &err, LUA_READ_CSTR_F, 1, stack_size);
+		goto exit;
+	}
+
+	if(pop_int(ls, &u.i) != 0) {
+		arg_type_err(ls, &err, LUA_READ_CSTR_F, 1, -1, "integer");
+		goto exit;
+	}
+
+	ret = 1;
+	lua_pushstring(ls, u.str);
+exit:
+	ghost_free(sheap, err);
+	return ret;
+}
+/*****************************************************************************/
 static int luaf_lua_trace_init(lua_State *ls)
 {
 	int stack_size = lua_gettop(ls);
 	char *err = NULL;
 
 	if(stack_size != 1) {
-		ghost_sdprintf(
-			&err,
-			0,
-			(
-				"lua_trace_init: Wrong number of arguments. "
-				"Expected 1, recieved %d."
-			),
-			stack_size
-		);
-		lua_pushstring(ls, err);
-		lua_error(ls);
-
+		arg_num_err(ls, &err, LUA_TRACE_INIT_F, 1, stack_size);
 		goto exit;
 	}
 
 
 	if(!lua_isfunction(ls, 1)) {
-		ghost_sdprintf(
-			&err,
-			0,
-			(
-				"lua_trace_init: Argument type error, "
-				"required function, recieved %s."
-			),
-			lua_typename(ls, 1)
-		);
-		lua_pushstring(ls, err);
-		lua_error(ls);
-
+		arg_type_err(ls, &err, LUA_TRACE_INIT_F, 1, -1, "function");
 		goto exit;
 	}
 
@@ -149,6 +306,9 @@ static void setup_lua_runtime(const struct lua_trace_data *dat)
 
 	luaL_openlibs(ls);
 	lua_register(ls, LUA_TRACE_INIT_F, luaf_lua_trace_init);
+	lua_register(ls, LUA_READ_CSTR_F, luaf_lt_read_cstr);
+	lua_register(ls, LUA_FMT_BUFFER_F, luaf_lt_fmt_buffer);
+	lua_register(ls, LUA_FMT_STR_F, luaf_lt_fmt_cstr);
 
 	define_global_int(ls, "LT_STARTED", STARTED);
 	define_global_int(ls, "LT_EXIT_NORMAL", EXITED_NORMAL);
@@ -182,6 +342,7 @@ static void *handler(void *arg, const struct tracee_state *state)
 	if(dat->lua_cb_ref < 0) {
 		return arg;
 	}
+
 
 	lua_rawgeti(ls, LUA_REGISTRYINDEX, dat->lua_cb_ref);
 

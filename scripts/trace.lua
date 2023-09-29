@@ -16,11 +16,15 @@
 -- You should have received a copy of the GNU Lesser General Public License  --
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.     --
 -------------------------------------------------------------------------------
+PRINT_SIZE = 64
 
 SYS_read = 0
 SYS_write = 1
 SYS_open = 2
 SYS_close = 3
+SYS_mmap = 9
+SYS_clock_nanosleep = 230
+SYS_openat = 257
 
 local function syscall_no(uregs)
 	return uregs.orig_rax
@@ -67,24 +71,121 @@ local function format_syscall(pid, syscall, ret, ...)
 	)
 end
 
+local function format_addr(addr)
+	if addr == 0 then
+		return "NULL"
+	else
+		return string.format("0x%x", addr)
+	end
+end
+
 local function printf_syscall(pid, syscall, ret, ...)
 	local args = {...}
 
 	print(format_syscall(pid, syscall, ret, table.unpack(args)))
 end
 
+local function print_sys_write(pid, ret, uregs)
+	local len = syscall_arg(uregs, 2)
+	printf_syscall(
+		pid,
+		"write",
+		ret,
+		syscall_arg(uregs, 0),
+		LT_fmt_buffer(syscall_arg(uregs, 1), len, PRINT_SIZE),
+		len
+	)
+end
+
+local function print_sys_close(pid, ret, uregs)
+	printf_syscall(pid, "close", ret, syscall_arg(uregs, 0))
+end
+
+local function print_sys_clock_nanosleep(pid, ret, uregs)
+	printf_syscall(
+			pid,
+			"clock_nanosleep",
+			ret,
+			syscall_arg(uregs, 0),
+			syscall_arg(uregs, 1),
+			string.format("0x%x", syscall_arg(uregs, 2)),
+			string.format("0x%x", syscall_arg(uregs, 3))
+	)
+end
+
+local function print_sys_read(pid, ret, uregs)
+
+	local addr = syscall_arg(uregs, 1)
+	local len = syscall_arg(uregs, 2)
+
+	printf_syscall(
+		pid,
+		"read",
+		ret.."("..LT_fmt_buffer(addr, len, PRINT_SIZE)..")",
+		syscall_arg(uregs, 0),
+		string.format("0X%x", addr),
+		len
+	)
+end
+
+local function print_sys_open(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"open",
+		ret,
+		LT_fmt_cstr(syscall_arg(uregs, 0), PRINT_SIZE),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2)
+	)
+end
+
+local function print_sys_mmap(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"mmap",
+		format_addr(ret),
+		format_addr(syscall_arg(uregs, 0)),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2),
+		syscall_arg(uregs, 3),
+		syscall_arg(uregs, 4),
+		syscall_arg(uregs, 5)
+	)
+end
+
+local function print_sys_openat(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"openat",
+		ret,
+		syscall_arg(uregs, 0),
+		LT_fmt_cstr(syscall_arg(uregs, 1), PRINT_SIZE),
+		syscall_arg(uregs, 2),
+		syscall_arg(uregs, 3)
+	)
+end
+
+local syscall_print_tbl = {
+	[SYS_read] = print_sys_read,
+	[SYS_write] = print_sys_write,
+	[SYS_open] = print_sys_open,
+	[SYS_close] = print_sys_close,
+	[SYS_mmap] = print_sys_mmap,
+	[SYS_clock_nanosleep] = print_sys_clock_nanosleep,
+	[SYS_openat] = print_sys_openat
+}
+
 local function print_syscall(pid, uregs)
 
 	local no = syscall_no(uregs)
 	local ret = syscall_retval(uregs)
 
-	if no == SYS_read then
-	elseif no == SYS_write then
-	elseif no == SYS_open then
-	elseif no == SYS_close then
-		printf_syscall(pid, "close", ret, syscall_arg(uregs, 0))
-	else
+	local print_func = syscall_print_tbl[no]
+
+	if print_func == nil then
 		print("[ID: "..pid.."] syscall("..no..", ...) = "..ret)
+	else
+		print_func(pid, ret, uregs)
 	end
 end
 

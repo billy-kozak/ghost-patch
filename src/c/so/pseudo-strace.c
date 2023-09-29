@@ -24,6 +24,7 @@
 
 #include "trace.h"
 #include <gio/ghost-stdio.h>
+#include <trace-print-tools.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -65,7 +66,6 @@ struct named_flag {
 #define SYSCALL_FLAG(str, slen, names, n, regs) \
 	sprint_flags(str, slen, names, SYSCALL_ARG(int, n, regs))
 
-#define CHAR_ARR_STRLEN(s) (sizeof(s) - 1)
 /******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
@@ -110,14 +110,6 @@ static void print_syscall(
 );
 static uint64_t syscall_retval(const struct user_regs_struct *regs);
 static uint64_t syscall_arg(int n, const struct user_regs_struct *regs);
-static int repr_byte(char *str, char byte, ssize_t *space_size);
-static char octal_char(int val, int n);
-static char *sprint_buffer(
-	const char *buffer,
-	char *space,
-	ssize_t buffer_size,
-	ssize_t space_size
-);
 static char *sprint_flags(
 	char *str, ssize_t size, const struct named_flag *names, int flag
 );
@@ -166,93 +158,6 @@ static char *sprint_flags(
 	}
 
 	*p = '\0';
-	return str;
-}
-/*****************************************************************************/
-static char octal_char(int val, int n)
-{
-	return ((val >> (3 * n)) & 0x7) + '0';
-}
-/*****************************************************************************/
-static int repr_byte(char *str, char byte, ssize_t *space_size)
-{
-	if((byte == '"') || (byte == '\\')) {
-		if(*space_size < 2) {
-			return 0;
-		} else {
-			str[0] = '\\';
-			str[1] = byte;
-			*space_size -= 2;
-			return 2;
-		}
-	} else if(byte == '\n') {
-		if(*space_size < 2) {
-			return 0;
-		} else {
-			str[0] = '\\';
-			str[1] = 'n';
-			*space_size -= 2;
-			return 2;
-		}
-	} else if(isprint(byte) || (byte == '\t')) {
-		if(*space_size == 0) {
-			return 0;
-		} else {
-			str[0] = byte;
-			*space_size -= 1;
-			return 1;
-		}
-	} else {
-		if(*space_size < 4) {
-			return 0;
-		} else {
-			str[0] = '\\';
-			str[1] = octal_char(byte, 2);
-			str[2] = octal_char(byte, 1);
-			str[3] = octal_char(byte, 0);
-			*space_size -= 4;
-			return 4;
-		}
-	}
-}
-/*****************************************************************************/
-static char *sprint_buffer(
-	const char *buffer,
-	char *str,
-	ssize_t buffer_size,
-	ssize_t space_size
-) {
-	int len = 0;
-	char border = '"';
-	const char continuation[] = "\"...";
-
-	if(buffer_size < 0) {
-		return NULL;
-	}
-
-	space_size -= sizeof(border) + CHAR_ARR_STRLEN(continuation) + 1;
-
-	if(space_size < 0) {
-		return NULL;
-	}
-
-	str[len] = border;
-	len += 1;
-
-	for(size_t i = 0; i < buffer_size; i++) {
-		int s = 0;
-		char c = buffer[i];
-
-		if((s = repr_byte(str + len, c, &space_size)) == 0) {
-			memcpy(str + len, continuation, sizeof(continuation));
-			return str;
-		}
-		len += s;
-	}
-
-	str[len] = border;
-	str[len + 1] = '\0';
-
 	return str;
 }
 /*****************************************************************************/
