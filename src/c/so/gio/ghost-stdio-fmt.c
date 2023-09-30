@@ -1230,14 +1230,11 @@ int ghost_snprintf(
 		struct output_str ostr;
 		ostr.str = str;
 		ostr.i = 0;
-		ostr.len = size;
+		ostr.len = size - 1;
 
 		fmt_write(fmt, emit_to_fixed_string, &ostr, args);
 
-		if(ostr.i < ostr.len) {
-			ostr.str[ostr.i] = '\0';
-			ostr.i += 1;
-		}
+		ostr.str[ostr.i] = '\0';
 		ret = ostr.i;
 	}
 
