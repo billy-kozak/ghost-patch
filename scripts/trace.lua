@@ -38,10 +38,17 @@ SYS_ioctl = 16
 SYS_writev = 20
 SYS_alarm = 37
 SYS_recvmsg = 47
+SYS_fcntl = 72
+SYS_unlink = 87
+SYS_getpgrp = 111
+SYS_futex = 202
 SYS_fadvise64 = 221
+SYS_timer_settime = 223
 SYS_clock_nanosleep = 230
 SYS_openat = 257
 SYS_newfstat = 262
+SYS_pselect6 = 270
+SYS_timerfd_settime = 286
 
 local function syscall_no(uregs)
 	return uregs.orig_rax
@@ -362,6 +369,86 @@ local function print_sys_writev(pid, ret, uregs)
 	)
 end
 
+local function print_sys_timer_settime(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"timer_settime",
+		ret,
+		syscall_arg(uregs, 0),
+		syscall_arg(uregs, 1),
+		format_addr(syscall_arg(uregs, 2)),
+		format_addr(syscall_arg(uregs, 3))
+	)
+end
+
+local function print_sys_timerfd_settime(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"timerfd_settime",
+		ret,
+		syscall_arg(uregs, 0),
+		syscall_arg(uregs, 1),
+		format_addr(syscall_arg(uregs, 2)),
+		format_addr(syscall_arg(uregs, 3))
+	)
+end
+
+local function print_sys_pselect6(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"pselect6",
+		ret,
+		syscall_arg(uregs, 0),
+		format_addr(syscall_arg(uregs, 1)),
+		format_addr(syscall_arg(uregs, 2)),
+		format_addr(syscall_arg(uregs, 3)),
+		format_addr(syscall_arg(uregs, 4)),
+		format_addr(syscall_arg(uregs, 5))
+	)
+end
+
+local function print_sys_unlink(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"unlink",
+		ret,
+		LT_fmt_cstr(syscall_arg(uregs, 0), PRINT_SIZE)
+	)
+end
+
+local function print_sys_fcntl(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"fcntl",
+		ret,
+		syscall_arg(uregs, 0),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2)
+	)
+end
+
+local function print_sys_getpgrp(pid, ret, _)
+	printf_syscall(
+		pid,
+		"getpgrp",
+		ret
+	)
+end
+
+local function print_sys_futext(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"futex",
+		ret,
+		format_addr(syscall_arg(uregs, 0)),
+		syscall_arg(uregs, 1),
+		syscall_arg(uregs, 2),
+		format_addr(syscall_arg(uregs, 3)),
+		format_addr(syscall_arg(uregs, 4)),
+		syscall_arg(uregs, 5)
+	)
+end
+
 local syscall_print_tbl = {
 	[SYS_read] = print_sys_read,
 	[SYS_write] = print_sys_write,
@@ -383,10 +470,17 @@ local syscall_print_tbl = {
 	[SYS_writev] = print_sys_writev,
 	[SYS_alarm] = print_sys_alarm,
 	[SYS_recvmsg] = print_sys_recvmsg,
+	[SYS_fcntl] = print_sys_fcntl,
+	[SYS_unlink] = print_sys_unlink,
+	[SYS_getpgrp] = print_sys_getpgrp,
+	[SYS_futex] = print_sys_futext,
 	[SYS_fadvise64] = print_sys_fadvise64,
+	[SYS_timer_settime] = print_sys_timer_settime,
 	[SYS_clock_nanosleep] = print_sys_clock_nanosleep,
 	[SYS_openat] = print_sys_openat,
-	[SYS_newfstat] = print_sys_newfstatat
+	[SYS_newfstat] = print_sys_newfstatat,
+	[SYS_timerfd_settime] = print_sys_timerfd_settime,
+	[SYS_pselect6] = print_sys_pselect6
 }
 
 local function print_syscall(pid, uregs)
