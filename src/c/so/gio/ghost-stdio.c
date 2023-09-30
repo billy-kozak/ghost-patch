@@ -638,7 +638,7 @@ size_t ghost_fwrite(
 		size_t w = circ_buffer_write(&f->wb, bsrc, total);
 		total_written += w;
 
-		if(w < total) {
+		if(w <= total) {
 			if(ghost_fflush(f) != 0) {
 				f->err |= GIO_ERR_IOERR;
 				return total_written;
@@ -647,6 +647,8 @@ size_t ghost_fwrite(
 		total -= w;
 		bsrc += w;
 	}
+
+	assert(total_written == (size * nmemb));
 
 	if(!(f->flags & GIO_FLAG_LF)) {
 		return total;
@@ -665,7 +667,7 @@ size_t ghost_fwrite(
 	while(flush_count != 0) {
 		size_t wcount = min_u64(
 			flush_count,
-			circ_buffer_contig_wsize(&f->wb)
+			circ_buffer_contig_rsize(&f->wb)
 		);
 		int w = write(f->fd, circ_buffer_rptr(&f->wb), wcount);
 
