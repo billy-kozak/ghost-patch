@@ -651,7 +651,7 @@ size_t ghost_fwrite(
 	assert(total_written == (size * nmemb));
 
 	if(!(f->flags & GIO_FLAG_LF) || circ_buffer_used(&f->wb) == 0) {
-		return total;
+		return total_written;
 	}
 
      	size_t flush_count = 0;
