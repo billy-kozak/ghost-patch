@@ -226,7 +226,6 @@ static int trace_target(pid_t target_pid)
 			break;
 		}
 
-
 		if(WIFEXITED(status)) {
 			state.status = EXITED_NORMAL;
 			state.data.exit_status = WEXITSTATUS(status);
@@ -290,8 +289,12 @@ static int trace_target(pid_t target_pid)
 		tracee_state_table_store(state_tab, state.pid, state.status);
 
 		if(state.status == PTRACE_EXEC_OCCURED) {
-			call_descriptor(&state);
 			ptrace(PTRACE_DETACH, state.pid, 0, 0);
+			// The next call to waitpid (top of this loop) will
+			// cause this process to exec into the new process.
+			// I have no idea why this works, but this effectivley
+			// allows us to follow the target (but without
+			// carrying over state) so it's a good outcome.
 		} else if(ptrace(PTRACE_SYSCALL, state.pid, 0, sig) == -1) {
 			state.status = EXITED_UNEXPECTED;
 			call_descriptor(&state);
