@@ -38,17 +38,20 @@ SYS_ioctl = 16
 SYS_writev = 20
 SYS_alarm = 37
 SYS_recvmsg = 47
+SYS_execve = 59
 SYS_fcntl = 72
 SYS_unlink = 87
 SYS_getpgrp = 111
 SYS_futex = 202
 SYS_fadvise64 = 221
 SYS_timer_settime = 223
+SYS_clock_gettime = 228
 SYS_clock_nanosleep = 230
 SYS_openat = 257
 SYS_newfstat = 262
 SYS_pselect6 = 270
 SYS_timerfd_settime = 286
+SYS_stub_execveat = 322
 
 local function syscall_no(uregs)
 	return uregs.orig_rax
@@ -95,6 +98,28 @@ local function format_syscall(pid, syscall, ret, ...)
 	)
 end
 
+local function format_syscall_enter(pid, syscall, ...)
+	local args = {...}
+
+	local alist
+
+	if #(args) ~= 0 then
+		alist = tostring(args[1])
+	else
+		alist = ""
+	end
+
+	for i=2, #(args) do
+		alist = alist .. ", " .. args[i]
+	end
+
+	return(
+		"[ID: " .. pid .. "] calling ... " ..
+		syscall .. "(" .. alist .. ")"
+	)
+
+end
+
 local function format_addr(addr)
 	if addr == 0 then
 		return "NULL"
@@ -107,6 +132,11 @@ local function printf_syscall(pid, syscall, ret, ...)
 	local args = {...}
 
 	print(format_syscall(pid, syscall, ret, table.unpack(args)))
+end
+
+local function printf_syscall_enter(pid, syscall, ...)
+	local args = {...}
+	print(format_syscall_enter(pid, syscall, table.unpack(args)))
 end
 
 local function print_sys_write(pid, ret, uregs)
@@ -449,6 +479,61 @@ local function print_sys_futext(pid, ret, uregs)
 	)
 end
 
+local function print_sys_execve(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"execve",
+		ret,
+		LT_fmt_cstr(syscall_arg(uregs, 0), PRINT_SIZE),
+		format_addr(syscall_arg(uregs, 1)),
+		format_addr(syscall_arg(uregs, 2))
+	)
+end
+
+local function print_sys_execve_enter(pid, uregs)
+	printf_syscall_enter(
+		pid,
+		"execve",
+		LT_fmt_cstr(syscall_arg(uregs, 0), PRINT_SIZE),
+		format_addr(syscall_arg(uregs, 1)),
+		format_addr(syscall_arg(uregs, 2))
+	)
+end
+
+local function print_stub_execveat(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"stub_execveat",
+		ret,
+		syscall_arg(uregs, 0),
+		LT_fmt_cstr(syscall_arg(uregs, 1), PRINT_SIZE),
+		format_addr(syscall_arg(uregs, 2)),
+		format_addr(syscall_arg(uregs, 3)),
+		syscall_arg(uregs, 4)
+	)
+end
+
+local function print_stub_execveat_enter(pid, uregs)
+	printf_syscall_enter(
+		pid,
+		"stub_execveat",
+		LT_fmt_cstr(syscall_arg(uregs, 1), PRINT_SIZE),
+		format_addr(syscall_arg(uregs, 2)),
+		format_addr(syscall_arg(uregs, 3)),
+		syscall_arg(uregs, 4)
+	)
+end
+
+local function print_sys_clock_gettime(pid, ret, uregs)
+	printf_syscall(
+		pid,
+		"clock_gettime",
+		ret,
+		syscall_arg(uregs, 0),
+		format_addr(syscall_arg(uregs, 1))
+	)
+end
+
 local syscall_print_tbl = {
 	[SYS_read] = print_sys_read,
 	[SYS_write] = print_sys_write,
@@ -470,17 +555,20 @@ local syscall_print_tbl = {
 	[SYS_writev] = print_sys_writev,
 	[SYS_alarm] = print_sys_alarm,
 	[SYS_recvmsg] = print_sys_recvmsg,
+	[SYS_execve] = print_sys_execve,
 	[SYS_fcntl] = print_sys_fcntl,
 	[SYS_unlink] = print_sys_unlink,
 	[SYS_getpgrp] = print_sys_getpgrp,
 	[SYS_futex] = print_sys_futext,
 	[SYS_fadvise64] = print_sys_fadvise64,
 	[SYS_timer_settime] = print_sys_timer_settime,
+	[SYS_clock_gettime] = print_sys_clock_gettime,
 	[SYS_clock_nanosleep] = print_sys_clock_nanosleep,
 	[SYS_openat] = print_sys_openat,
 	[SYS_newfstat] = print_sys_newfstatat,
 	[SYS_timerfd_settime] = print_sys_timerfd_settime,
-	[SYS_pselect6] = print_sys_pselect6
+	[SYS_pselect6] = print_sys_pselect6,
+	[SYS_stub_execveat] = print_stub_execveat
 }
 
 local function print_syscall(pid, uregs)
@@ -497,10 +585,25 @@ local function print_syscall(pid, uregs)
 	end
 end
 
+local function print_syscall_enter(pid, uregs)
+	local no = syscall_no(uregs)
+
+	if no == SYS_execve then
+		print_sys_execve_enter(pid, uregs)
+	elseif no == SYS_stub_execveat then
+		print_stub_execveat_enter(pid, uregs)
+	end
+end
+
 local function handle_ev(ev, pid, uregs)
 	if ev == LT_SYSCALL_EXIT then
 		print_syscall(pid, uregs)
-	 end
+	elseif ev == LT_SYSCALL_ENTER then
+		print_syscall_enter(pid, uregs)
+	elseif ev == LT_EXEC_OCCURED then
+		print("[ID: "..pid.."] about to exec...")
+	end
 end
 
+print("lua.trace: beggining to trace target")
 LT_init(handle_ev)
