@@ -26,6 +26,7 @@
 #include <circ_buffer.h>
 #include <secret-heap.h>
 #include <utl/random-utl.h>
+#include <safe_syscalls.h>
 
 #define __USE_GNU
 #include <fcntl.h>
@@ -188,7 +189,7 @@ static struct ghost_file *internal_ghost_fdopen_into(
 
 	file->err = 0;
 
-	if(isatty(fd)) {
+	if(safe_isatty(fd)) {
 		file->flags |= GIO_FLAG_LF;
 	}
 	if(fd != 2) {

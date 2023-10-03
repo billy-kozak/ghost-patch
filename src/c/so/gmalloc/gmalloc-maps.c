@@ -24,6 +24,7 @@
 #include <utl/file-utl.h>
 #include <utl/str-utl.h>
 #include <utl/math-utl.h>
+#include <safe_syscalls.h>
 
 #include <stdlib.h>
 #include <fcntl.h>
@@ -83,7 +84,7 @@ static void *poor_malloc(size_t size)
 	size_t page_size = getpagesize();
 	size_t map_size = align_up_unsigned(size, page_size);
 
-	return mmap(
+	return safe_mmap(
 		NULL,
 		map_size,
 		PROT_READ | PROT_WRITE,
@@ -98,7 +99,7 @@ static void poor_free(void *mem, size_t size)
 	size_t page_size = getpagesize();
 	size_t map_size = align_up_unsigned(size, page_size);
 
-	munmap(mem, map_size);
+	safe_munmap(mem, map_size);
 }
 /*****************************************************************************/
 static void *poor_realloc(void *mem, size_t old_size, size_t new_size)
@@ -114,7 +115,7 @@ static void *poor_realloc(void *mem, size_t old_size, size_t new_size)
 	size_t diff = real_new_size - real_old_size;
 	uint8_t *after = ((uint8_t*)mem) + real_old_size;
 
-	void *new_mem = mmap(
+	void *new_mem = safe_mmap(
 		after,
 		diff,
 		PROT_READ | PROT_WRITE,

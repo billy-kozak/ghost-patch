@@ -26,6 +26,8 @@
 #include "gmalloc/gmalloc-chunk-types.h"
 #include "gmalloc/gmalloc-maps.h"
 
+#include <safe_syscalls.h>
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -328,7 +330,7 @@ static int extend_mmaped_chunk(struct chunk *chunk, size_t desired_size)
 	assert(desired_size > chunk_size);
 	assert(chunk_read_flag(chunk, MMAPED_CHUNK | TOP_CHUNK));
 
-	new_mem = mmap(
+	new_mem = safe_mmap(
 		chunk_end,
 		map_size,
 		PROT_READ | PROT_WRITE,
@@ -340,7 +342,7 @@ static int extend_mmaped_chunk(struct chunk *chunk, size_t desired_size)
 	if(new_mem == MAP_FAILED) {
 		return 1;
 	} else if(new_mem != chunk_end) {
-		munmap(new_mem, map_size);
+		safe_munmap(new_mem, map_size);
 		return 1;
 	} else {
 		chunk_set_size(chunk, chunk_size + map_size);
@@ -376,7 +378,7 @@ static int shrink_mmaped_chunk(struct chunk *chunk, size_t desired_size)
 
 	assert((size_to_free % page_size) == 0);
 
-	int r = munmap(
+	int r = safe_munmap(
 		end_of_chunk, size_to_free
 	);
 
@@ -466,7 +468,7 @@ static struct chunk *alloc_on_top(struct ghost_heap * heap, size_t size)
 
 	assert((extra_size % page_size) == 0);
 
-	void *new_mem = mmap(
+	void *new_mem = safe_mmap(
 		end_of_heap,
 		extra_size,
 		PROT_READ | PROT_WRITE,
@@ -496,7 +498,7 @@ static struct chunk *alloc_on_top(struct ghost_heap * heap, size_t size)
 static void *pure_mmap_alloc(struct ghost_heap *heap, size_t size)
 {
 	size_t real_size = min_to_map(size + CHUNK_OVERHEAD_SIZE);
-	struct chunk *chunk = mmap(
+	struct chunk *chunk = safe_mmap(
 		NULL,
 		real_size,
 		PROT_READ | PROT_WRITE,
@@ -624,7 +626,9 @@ void ghost_free(struct ghost_heap *heap, void *ptr)
 	chunk = chunk_mem_ptr(ptr);
 
 	if(chunk_read_flag(chunk, MMAPED_CHUNK)) {
-		munmap(chunk, chunk_read_size(chunk) + CHUNK_OVERHEAD_SIZE);
+		safe_munmap(
+			chunk, chunk_read_size(chunk) + CHUNK_OVERHEAD_SIZE
+		);
 	} else {
 		struct chunk *next = chunk_next_after(chunk);
 
@@ -750,7 +754,7 @@ int ghost_heap_destroy(struct ghost_heap *heap)
 	uint8_t *end_of_heap = heap->top_chunk->payload.bytes + top_size;
 	uint8_t *top_of_heap = (uint8_t*)heap;
 
-	return munmap(heap, end_of_heap - top_of_heap);
+	return safe_munmap(heap, end_of_heap - top_of_heap);
 }
 /*****************************************************************************/
 struct ghost_heap *ghost_heap_init(void)
@@ -777,7 +781,7 @@ struct ghost_heap *ghost_heap_init(void)
 	void *space = gmalloc_maps_find_suitable_heap();
 	assert(space != NULL);
 
-	ret = mmap(space, size_mapped, prot, flags, -1, 0);
+	ret = safe_mmap(space, size_mapped, prot, flags, -1, 0);
 
 	if(ret == MAP_FAILED) {
 		goto exit;

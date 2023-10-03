@@ -32,6 +32,7 @@
 #include "options.h"
 #include "secret-heap.h"
 #include <gio/ghost-stdio.h>
+#include <safe_syscalls.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -119,7 +120,7 @@ static void modify_syscalls(struct tracee_state *state)
 static void signal_forwarder_handler(
 	int signo, siginfo_t *info, void *ucontext
 ) {
-	kill(child_pid, signo);
+	safe_kill(child_pid, signo);
 }
 /*****************************************************************************/
 static int monitor_thread(void* arg)
@@ -215,6 +216,7 @@ static int trace_target(pid_t target_pid)
 	call_descriptor(&state);
 
 	wait_flag = 1;
+
 	ptrace(PTRACE_SYSCALL, target_pid, 0, 0);
 
 	while(1) {
@@ -394,7 +396,7 @@ int start_trace(
 
 	if(DEBUG_MODE_NO_PTRACE == 0) {
 		ptrace(PTRACE_TRACEME, 0, 0, 0);
-		kill(child_pid, SIGSTOP);
+		safe_kill(child_pid, SIGSTOP);
 	}
 
 	if(ents != NULL) {

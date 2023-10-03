@@ -23,6 +23,7 @@
 #include "fake-pthread.h"
 
 #include "thread-jump.h"
+#include "safe_syscalls.h"
 
 #include <pthread.h>
 #include <unistd.h>
@@ -108,7 +109,7 @@ int fake_pthread(int(*target)(void* arg), void *arg)
 		TJ_BUFFER_INITIAL
 	};
 
-	stack_end = mmap(
+	stack_end = safe_mmap(
 		NULL,
 		TEMP_STACK_SIZE,
 		PROT_READ | PROT_WRITE,
@@ -147,7 +148,7 @@ int fake_pthread(int(*target)(void* arg), void *arg)
 cleanup_2:
 	pthread_attr_destroy(&attr);
 cleanup_1:
-	munmap(stack_end, TEMP_STACK_SIZE);
+	safe_munmap(stack_end, TEMP_STACK_SIZE);
 exit:
 	return ret;
 }
