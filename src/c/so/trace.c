@@ -269,10 +269,8 @@ static int trace_target(pid_t target_pid)
 				state.status = PTRACE_EXEC_OCCURED;
 			} else if(state.data.pt_event == PTRACE_EVENT_CLONE) {
 				state.status = STARTED;
-
 			} else {
 				state.status = PTRACE_EVENT_OCCURED_STOP;
-
 			}
 
 			call_descriptor(&state);
@@ -282,6 +280,8 @@ static int trace_target(pid_t target_pid)
 
 			state.status = SIGNAL_DELIVERY_STOP;
 			state.data.signo = sig;
+
+			load_regs(&state);
 
 			call_descriptor(&state);
 		}
