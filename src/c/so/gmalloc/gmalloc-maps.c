@@ -23,6 +23,7 @@
 
 #include <utl/file-utl.h>
 #include <utl/str-utl.h>
+#include <utl/math-utl.h>
 
 #include <stdlib.h>
 #include <fcntl.h>
@@ -31,12 +32,13 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+#include <sys/mman.h>
 /******************************************************************************
 *                                  CONSTANTS                                  *
 ******************************************************************************/
 static const size_t ADDR_BUFFER = 4L * (1L << 30);
 
-static const size_t MAX_MAPPINGS = 1024;
+static const size_t NUM_MAPPINGS_INITIAL = 1024;
 static const char MAPPING_FILE[] = "/proc/self/maps";
 
 static const size_t MAPPING_MAX_LINE =
@@ -68,9 +70,82 @@ struct memory_mapping {
 	void *addr_end;
 	enum mapping_type type;
 };
+
+struct mapping_list {
+	size_t n;
+	struct memory_mapping mappings[];
+};
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
+static void *poor_malloc(size_t size)
+{
+	size_t page_size = getpagesize();
+	size_t map_size = align_up_unsigned(size, page_size);
+
+	return mmap(
+		NULL,
+		map_size,
+		PROT_READ | PROT_WRITE,
+		MAP_PRIVATE | MAP_ANONYMOUS,
+		-1,
+		0
+	);
+}
+/*****************************************************************************/
+static void poor_free(void *mem, size_t size)
+{
+	size_t page_size = getpagesize();
+	size_t map_size = align_up_unsigned(size, page_size);
+
+	munmap(mem, map_size);
+}
+/*****************************************************************************/
+static void *poor_realloc(void *mem, size_t old_size, size_t new_size)
+{
+	size_t page_size = getpagesize();
+	size_t real_old_size = align_up_unsigned(old_size, page_size);
+	size_t real_new_size = align_up_unsigned(new_size, page_size);
+
+	if(real_old_size <= real_new_size) {
+		return mem;
+	}
+
+	size_t diff = real_new_size - real_old_size;
+	uint8_t *after = ((uint8_t*)mem) + real_old_size;
+
+	void *new_mem = mmap(
+		after,
+		diff,
+		PROT_READ | PROT_WRITE,
+		MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
+		-1,
+		0
+	);
+
+	if(new_mem != MAP_FAILED) {
+		return new_mem;
+	}
+
+	new_mem = poor_malloc(real_new_size);
+
+	if(new_mem == NULL) {
+		return NULL;
+	}
+
+	memcpy(new_mem, mem, old_size);
+	poor_free(mem, real_old_size);
+	return new_mem;
+}
+/*****************************************************************************/
+static size_t mapping_list_byte_size(size_t list_size)
+{
+	return (
+		sizeof(struct mapping_list) +
+		(list_size * sizeof(struct memory_mapping))
+	);
+}
+/*****************************************************************************/
 static bool map_tok_empty(struct lstring *s)
 {
 	if(s->len == 0) {
@@ -153,7 +228,7 @@ static int parse_mapping(
 	return 0;
 }
 /*****************************************************************************/
-static int parse_mappings(struct memory_mapping *space)
+static int parse_mappings(struct mapping_list **list)
 {
 	int fd = open(MAPPING_FILE, 0, O_RDWR);
 	int count = 0;
@@ -170,14 +245,23 @@ static int parse_mappings(struct memory_mapping *space)
 
 	int r;
 	while((r = file_utl_read_line(&reader)) > 0) {
-		if(count > MAX_MAPPINGS) {
-			count = -1;
-			goto exit;
+		if(count >= (*list)->n) {
+			void *tmp = poor_realloc(
+				*list,
+				mapping_list_byte_size((*list)->n),
+				mapping_list_byte_size(2 * (*list)->n)
+			);
+			if(tmp == NULL) {
+				count = -1;
+				goto exit;
+			}
+			*list = tmp;
+			(*list)->n *= 2;
 		}
 		const char *line = reader.data;
 		size_t len = reader.len;
 
-		if(parse_mapping(space + count, line, len) != 0) {
+		if(parse_mapping((*list)->mappings + count, line, len) != 0) {
 			count = -1;
 			goto exit;
 		}
@@ -266,24 +350,30 @@ static size_t get_total_system_memory(void)
 ******************************************************************************/
 void* gmalloc_maps_find_suitable_heap(void)
 {
-	struct memory_mapping mappings[MAX_MAPPINGS];
+	struct mapping_list *mappings = poor_malloc(
+		mapping_list_byte_size(NUM_MAPPINGS_INITIAL)
+	);
 
-	int count = parse_mappings(mappings);
+	mappings->n = NUM_MAPPINGS_INITIAL;
+
+	int count = parse_mappings(&mappings);
+
+	uint8_t *ret = NULL;
 
 	if(count <= 0) {
-		return NULL;
+		goto exit;
 	}
 
 	size_t mem = get_total_system_memory();
-	uint8_t *soh = start_of_heap(mappings, count);
-	uint8_t *sos = start_of_stack(mappings, count);
+	uint8_t *soh = start_of_heap(mappings->mappings, count);
+	uint8_t *sos = start_of_stack(mappings->mappings, count);
 
 	assert(sos != NULL);
 
-	uint8_t *addr;
+	uint8_t *addr = NULL;
 
 	if(soh == NULL) {
-		uint8_t *eod = end_of_data(mappings, count);
+		uint8_t *eod = end_of_data(mappings->mappings, count);
 		assert(eod != NULL);
 
 		addr = eod + mem + getpagesize() * 2;
@@ -293,7 +383,7 @@ void* gmalloc_maps_find_suitable_heap(void)
 
 	while(addr < sos) {
 		uint8_t *next = check_collision(
-			mappings,
+			mappings->mappings,
 			count,
 			addr,
 			ADDR_BUFFER
@@ -302,10 +392,13 @@ void* gmalloc_maps_find_suitable_heap(void)
 		if(next != NULL) {
 			addr = next;
 		} else {
-			return addr;
+			ret = addr;
+			goto exit;
 		}
 	}
 
-	return NULL;
+exit:
+	poor_free(mappings, mapping_list_byte_size(mappings->n));
+	return ret;
 }
 /*****************************************************************************/
