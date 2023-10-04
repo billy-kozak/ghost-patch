@@ -48,8 +48,7 @@ static struct prog_opts cached_opts;
 /******************************************************************************
 *                              STATIC FUNCTIONS                               *
 ******************************************************************************/
-static bool am_py_trace(const char *progname);
-static sigjmp_buf jump_buffer;
+static bool am_ghost_patch(const char *progname);
 /*****************************************************************************/
 static void do_special_setup(void)
 {
@@ -73,18 +72,16 @@ static void do_special_setup(void)
 	child_pid = ents.child;
 }
 /*****************************************************************************/
-static bool am_py_trace(const char *progname)
+static bool am_ghost_patch(const char *progname)
 {
 	return strcmp(basename(progname), APPLICATION_NAME) == 0;
 }
 /*****************************************************************************/
 static int fake_main(int argc, char **argv, char **envp)
 {
-	if(!am_py_trace(argv[0])) {
+	if(!am_ghost_patch(argv[0])) {
 		do_special_setup();
 	}
-
-	siglongjmp(jump_buffer, 1);
 	return 0;
 }
 /******************************************************************************
@@ -113,25 +110,25 @@ EXPORT int __libc_start_main(
 			void (* stack_end)
 		);
 
-	if(sigsetjmp(jump_buffer, 0) == 0) {
-		char **argv = ubp_av;
-		char **envp = ubp_av + argc + 1;
+	char **argv = ubp_av;
+	char **envp = ubp_av + argc + 1;
 
-		return fake_main(argc, argv, envp);
-	} else {
-		real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
-		return real_libc_start_main(
-			main,
-			argc,
-			ubp_av,
-			init,
-			fini,
-			rtld_fini,
-			stack_end
-		);
+	int fake_ret = fake_main(argc, argv, envp);
+
+	if(fake_ret < 0)  {
+		return fake_ret;
 	}
 
-
+	real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
+	return real_libc_start_main(
+		main,
+		argc,
+		ubp_av,
+		init,
+		fini,
+		rtld_fini,
+		stack_end
+	);
 }
 /*****************************************************************************/
 EXPORT pid_t getpid(void)
