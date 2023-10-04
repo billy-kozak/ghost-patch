@@ -106,23 +106,18 @@ EXPORT int __libc_start_main(
 		(
 			int (*main)(int, char **, char **),
 			int argc,
-			char **ubp_av, void (*init)(void),
+			char **ubp_av,
+			void (*init)(void),
 			void (*fini)(void),
 			void (*rtld_fini) (void),
 			void (* stack_end)
 		);
 
 	if(sigsetjmp(jump_buffer, 0) == 0) {
-		real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
-		return real_libc_start_main(
-			fake_main,
-			argc,
-			ubp_av,
-			init,
-			fini,
-			rtld_fini,
-			stack_end
-		);
+		char **argv = ubp_av;
+		char **envp = ubp_av + argc + 1;
+
+		return fake_main(argc, argv, envp);
 	} else {
 		real_libc_start_main = dlsym(RTLD_NEXT, "__libc_start_main");
 		return real_libc_start_main(
