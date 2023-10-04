@@ -74,7 +74,20 @@ static void do_special_setup(void)
 /*****************************************************************************/
 static bool am_ghost_patch(const char *progname)
 {
-	return strcmp(basename(progname), APPLICATION_NAME) == 0;
+	const char *fname = basename(progname);
+
+	/* avoid using strcmp in the pre-main execution environment
+	 * In some targets, use of certain library functions causes
+	* sigfaults */
+	int i = 0;
+	while((fname[i] != '\0') && (APPLICATION_NAME[i] != '\0')) {
+		if(fname[i] != APPLICATION_NAME[i]) {
+			return false;
+		}
+		i += 1;
+	}
+
+	return (fname[i] == '\0') && (APPLICATION_NAME[i] == '\0');
 }
 /*****************************************************************************/
 static int fake_main(int argc, char **argv, char **envp)

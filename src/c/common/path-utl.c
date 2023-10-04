@@ -63,7 +63,10 @@ fail:
 /*****************************************************************************/
 const char *basename(const char *path)
 {
-	size_t size = strlen(path);
+	size_t size = 0;
+	while(path[size] != '\0') {
+		size += 1;
+	}
 
 	for(size_t i = size - 1; i >= 0; i--) {
 		if(path[i] == '/') {
