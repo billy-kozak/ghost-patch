@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/syscall.h>
+#include <stdnoreturn.h>
 /******************************************************************************
 *                                    TYPES                                    *
 ******************************************************************************/
@@ -224,6 +225,17 @@ static inline int safe_kill(pid_t pid, int sig)
 	ret.i64 = _syscall2(SYS_kill, a0.i64, a1.i64);
 
 	return (int)ret.i64;
+}
+/*****************************************************************************/
+static inline pid_t safe_getpid(void)
+{
+	return 	(pid_t)_syscall0(SYS_getpid);
+}
+/*****************************************************************************/
+static inline noreturn void safe_exit(int status)
+{
+	_syscall1(SYS_exit, status);
+	abort(); // shouldn't ever happen, but makes the warnings go away
 }
 /******************************************************************************
 *                            FUNCTION DECLARATIONS                            *

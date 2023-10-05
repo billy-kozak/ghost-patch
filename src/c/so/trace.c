@@ -125,7 +125,7 @@ static void signal_forwarder_handler(
 /*****************************************************************************/
 static int monitor_thread(void* arg)
 {
-	child_pid = syscall_getpid();
+	child_pid = safe_getpid();
 
 	tj_swap(&tj_thread, &tj_main, 1);
 	assert(arch_prctl_get_fs_nocheck() == tj_thread.fs);
@@ -137,7 +137,7 @@ static int monitor_thread(void* arg)
 
 	ghost_stdio_cleanup();
 
-	syscall_exit(exit_code);
+	safe_exit(exit_code);
 
 	return -1;
 }
@@ -388,7 +388,7 @@ int start_trace(
 
 	memcpy(&descriptor, descr, sizeof(descriptor));
 
-	parent_pid = syscall_getpid();
+	parent_pid = safe_getpid();
 
 	if(start_monitor()) {
 		return 1;

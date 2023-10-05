@@ -30,6 +30,7 @@
 #include "options.h"
 #include "secret-heap.h"
 #include "ghost-signals.h"
+#include "safe_syscalls.h"
 #include <gio/ghost-stdio.h>
 
 #include <dlfcn.h>
@@ -146,7 +147,7 @@ EXPORT int __libc_start_main(
 /*****************************************************************************/
 EXPORT pid_t getpid(void)
 {
-	pid_t result = syscall_getpid();
+	pid_t result = safe_getpid();
 
 	if(cached_opts.fake_pid && (result == child_pid)) {
 		return parent_pid;
