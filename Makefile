@@ -146,24 +146,29 @@ no_trace: debug
 
 tests: $(BUILD_TEST_DIR)/.dir_dummy
 tests: CFLAGS += -DDEBUG=1 -g -O0
+tests: $(DEP_FILES)
 tests: $(TEST_EXE)
 
 fast_tests: $(BUILD_TEST_DIR)/.dir_dummy
 fast_tests: CFLAGS += -DNDEBUG=1 -march=native -Os -flto=auto
 fast_tests: LDFLAGS += -march=native -Os -flto=auto
+fast_tests: $(DEP_FILES)
 fast_tests: $(TEST_EXE)
 
 debug: CFLAGS += -DDEBUG=1 -g -O0
+debug: $(DEP_FILES)
 debug: $(BINARY)
 debug: $(SO)
 
 optomized: CFLAGS += -DNDEBUG=1 -march=native -Os -flto=auto
 optomized: LDFLAGS += -march=native -Os -flto=auto
+optomized: $(DEP_FILES)
 optomized: $(BINARY)
 optomized: $(SO)
 
-asg_gen: CFLAGS += -fverbose-asm
+asm_gen: CFLAGS += -fverbose-asm
 asm_gen: CFLAGS += -DNDEBUG=1 -march=native -Os -flto=auto
+asm_gen: $(DEP_FILES)
 asm_gen: $(ASM_GEN)
 
 $(O_COMMON_DUMMY): CFLAGS += $(INC_COMMON)
@@ -191,17 +196,21 @@ directories: $(BUILD_DIR)/.dir_dummy $(EXE_DIR)/.dir_dummy
 	mkdir -p $(dir $(@))
 	@touch $(@)
 
+$(DD_COMMON)/%.d: DO += $(BUILD_DIR)/$(patsubst $(DD_SO)/%.d,%.o,$@)
 $(DD_COMMON)/%.d: %.c | $(DD_COMMON)/.dir_dummy
-	$(CC) $(INC_COMMON) -MF $@ -M -MT "$(patsubst %.d,%.o,$@) $@" $<
+	$(CC) $(INC_COMMON) -MF $@ -M -MT "$(DO) $@" $<
 
+$(DD_SO)/%.d: DO += $(BUILD_DIR)/$(patsubst $(DD_SO)/%.d,%.o,$@)
 $(DD_SO)/%.d: %.c | $(DD_SO)/.dir_dummy
-	$(CC) $(INC_SO) -MF $@ -M -MT "$(patsubst %.d,%.o,$@) $@" $<
+	$(CC) $(INC_SO) -MF $@ -M -MT "$(DO) $@" $<
 
+$(DD_MAIN)/%.d: DO += $(BUILD_DIR)/$(patsubst $(DD_SO)/%.d,%.o,$@)
 $(DD_MAIN)/%.d: %.c | $(DD_MAIN)/.dir_dummy
-	$(CC) $(INC_MAIN) -MF $@ -M -MT "$(patsubst %.d,%.o,$@) $@" $<
+	$(CC) $(INC_MAIN) -MF $@ -M -MT "$(DO) $@" $<
 
+$(DD_TEST)/%.d: %.c | $(DD_MAIN)/.dir_dummy
 $(DD_TEST)/%.d: %.c | $(DD_TEST)/.dir_dummy
-	$(CC) $(INC_TEST) -MF $@ -M -MT "$(patsubst %.d,%.o,$@) $@" $<
+	$(CC) $(INC_TEST) -MF $@ -M -MT "$(@) $@" $<
 
 $(BUILD_DIR)/%.d: %.S | $(BUILD_DIR)/.dir_dummy
 	$(CC) -MF $@ -M -MT "$(patsubst %.d,%.o,$@) $@" $<
@@ -228,13 +237,15 @@ $(TEST_EXE): $(O_COMMON_DUMMY) $(O_SO_DUMMY)
 $(TEST_EXE): $(O_TEST_DUMMY) $(O_ASM_DUMMY) | $(TEST_EXE_DIR)/.dir_dummy
 	$(LD) $(LDFLAGS) $(TEST_OBJ) $(TEST_LIBS) -o $@
 
+.PHONY: clean
 clean:
 	rm -rf $(CLEAN_FILES)
 
+.PHONY: dir_clean
 dir_clean:
 	rm -rf $(BUILD_DIR) $(EXE_DIR) $(ASM_GEN_DIR)
 
-ifeq (,$(filter $(MAKECMDGOALS), $(NO_DEPS_TARGETS)))
+ifeq (,$(filter $(NO_DEPS_TARGETS), $(MAKECMDGOALS)))
 
 #next two conditonals prevent make from running on dry run or when
 #invoked for tab-completion
