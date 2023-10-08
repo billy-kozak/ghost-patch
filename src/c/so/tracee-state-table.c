@@ -23,6 +23,7 @@
 #include "tracee-state-table.h"
 
 #include "secret-heap.h"
+#include <gio/ghost-stdio.h>
 
 #include <stdint.h>
 #include <fcntl.h>
@@ -58,7 +59,7 @@ static int compute_max_threads(void)
 	/* avoid using stdio when we are inside the memory space of another
 	process */
 
-	int fd = open("/proc/sys/kernel/threads-max", O_RDONLY);
+	int fd = open("/proc/sys/kernel/pid_max", O_RDONLY);
 	char str[READ_BUFFER_SIZE];
 	char *endptr = NULL;
 	int ret = -1;
