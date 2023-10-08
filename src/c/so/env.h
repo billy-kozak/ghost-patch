@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
 *                                                                             *
@@ -16,21 +16,12 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef ENV_H
+#define ENV_H
 /******************************************************************************
-*                                  INCLUDES                                   *
+*                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-#include <options.h>
-
-#include <utl/str-utl.h>
-
-#include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
-#include <limits.h>
-/******************************************************************************
-*                                  CONSTANTS                                  *
-******************************************************************************/
-const char *OPTION_ENV_VAR = "GHOST_PATCH_OPTS";
-const char *FAKE_PID_FIELD = "fake_pid";
-const char *LUA_ENT_FIELD = "lua_ent";
+const char *ghost_getenv(const char *var);
+void ghost_env_init(char **envp);
 /*****************************************************************************/
+#endif /* ENV_H */

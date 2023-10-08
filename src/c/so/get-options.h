@@ -16,21 +16,15 @@
 * You should have received a copy of the GNU Lesser General Public License    *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.       *
 ******************************************************************************/
+#ifndef GET_OPTIONS_H
+#define GET_OPTIONS_H
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
 #include <options.h>
-
-#include <utl/str-utl.h>
-
-#include <stdbool.h>
-#include <string.h>
-#include <stdlib.h>
-#include <limits.h>
 /******************************************************************************
-*                                  CONSTANTS                                  *
+*                            FUNCTION DECLARATIONS                            *
 ******************************************************************************/
-const char *OPTION_ENV_VAR = "GHOST_PATCH_OPTS";
-const char *FAKE_PID_FIELD = "fake_pid";
-const char *LUA_ENT_FIELD = "lua_ent";
+int get_options(struct prog_opts *opts);
 /*****************************************************************************/
+#endif /* GET_OPTIONS_H */

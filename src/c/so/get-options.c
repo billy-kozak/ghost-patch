@@ -19,18 +19,67 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include <options.h>
+#include "get-options.h"
 
 #include <utl/str-utl.h>
+#include <env.h>
 
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
 /******************************************************************************
-*                                  CONSTANTS                                  *
+*                                    DATA                                     *
 ******************************************************************************/
-const char *OPTION_ENV_VAR = "GHOST_PATCH_OPTS";
-const char *FAKE_PID_FIELD = "fake_pid";
-const char *LUA_ENT_FIELD = "lua_ent";
+static struct prog_opts cached_opts = DEFAULT_PROG_ARGS;
+static char lua_ent_opt[PATH_MAX + 1];
+/******************************************************************************
+*                            FUNCTION DEFINITIONS                             *
+******************************************************************************/
+int get_options(struct prog_opts *opts)
+{
+	const char *env_str;
+	const char *sptr;
+
+	env_str = ghost_getenv(OPTION_ENV_VAR);
+	sptr = env_str;
+
+	if(env_str == NULL) {
+		memcpy(opts, &cached_opts, sizeof(cached_opts));
+		return -1;
+	}
+
+	memset(opts, 0, sizeof(*opts));
+
+	size_t flen = 0;
+
+	while(*sptr != '\0') {
+		if(strdcmp(sptr, FAKE_PID_FIELD, '=') == 0) {
+			sptr += strlen(FAKE_PID_FIELD) + 1;
+
+			if(strdcmp(sptr, "true", ';') == 0) {
+				opts->fake_pid = true;
+				sptr += sizeof("true");
+			} else if(strdcmp(sptr, "false", ';') == 0) {
+				opts->fake_pid = false;
+				sptr += sizeof("false");
+			} else {
+				return -1;
+			}
+		} else if(strdcmp(sptr, LUA_ENT_FIELD, '=') == 0) {
+			sptr += strlen(LUA_ENT_FIELD) + 1;
+			flen = strdcpy(lua_ent_opt, sptr, ';', PATH_MAX + 1);
+
+			if(sptr[flen] != ';') {
+				return -1;
+			}
+			opts->lua_ent = lua_ent_opt;
+			sptr += flen + 1;
+		} else {
+			return -1;
+		}
+	}
+
+	return 0;
+}
 /*****************************************************************************/

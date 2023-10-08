@@ -27,11 +27,12 @@
 #include "pseudo-strace.h"
 #include "lua-trace.h"
 #include "application.h"
-#include "options.h"
+#include "get-options.h"
 #include "secret-heap.h"
 #include "ghost-signals.h"
 #include "safe_syscalls.h"
 #include <gio/ghost-stdio.h>
+#include <env.h>
 
 #include <dlfcn.h>
 #include <string.h>
@@ -110,6 +111,10 @@ EXPORT int __libc_start_main(
 	void (*rtld_fini) (void),
 	void (* stack_end)
 ) {
+	char **argv = ubp_av;
+	char **envp = ubp_av + argc + 1;
+
+	ghost_env_init(envp);
 	secret_heap_init();
 	ghost_stdio_init();
 
@@ -124,8 +129,6 @@ EXPORT int __libc_start_main(
 			void (* stack_end)
 		);
 
-	char **argv = ubp_av;
-	char **envp = ubp_av + argc + 1;
 
 	int fake_ret = fake_main(argc, argv, envp);
 

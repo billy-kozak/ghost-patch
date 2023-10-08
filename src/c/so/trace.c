@@ -29,7 +29,7 @@
 #include "debug-modes.h"
 #include "tracee-state-table.h"
 #include "application.h"
-#include "options.h"
+#include "get-options.h"
 #include "secret-heap.h"
 #include <gio/ghost-stdio.h>
 #include <safe_syscalls.h>

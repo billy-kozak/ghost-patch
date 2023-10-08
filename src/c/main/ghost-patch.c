@@ -21,7 +21,6 @@
 ******************************************************************************/
 #include <proc-utl.h>
 #include <debug-modes.h>
-#include <options.h>
 #include <set-options.h>
 #include <str-utl-libc.h>
 #include <utl/str-utl.h>

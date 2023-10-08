@@ -1,5 +1,5 @@
 /******************************************************************************
-* Copyright (C) 2019  Billy Kozak                                             *
+* Copyright (C) 2023  Billy Kozak                                             *
 *                                                                             *
 * This file is part of the ghost-patch program                                *
 *                                                                             *
@@ -19,18 +19,58 @@
 /******************************************************************************
 *                                  INCLUDES                                   *
 ******************************************************************************/
-#include <options.h>
+#include "env.h"
 
 #include <utl/str-utl.h>
 
-#include <stdbool.h>
-#include <string.h>
 #include <stdlib.h>
-#include <limits.h>
+#include <assert.h>
 /******************************************************************************
-*                                  CONSTANTS                                  *
+*                                    DATA                                     *
 ******************************************************************************/
-const char *OPTION_ENV_VAR = "GHOST_PATCH_OPTS";
-const char *FAKE_PID_FIELD = "fake_pid";
-const char *LUA_ENT_FIELD = "lua_ent";
+const char *const *ghost_envp;
+/******************************************************************************
+*                              STATIC FUNCTIONS                               *
+******************************************************************************/
+static const char *env_cmp(const char *env, const char *var)
+{
+	size_t idx = 0;
+
+	while(env[idx] != '=') {
+		if(env[idx] == '\0') {
+			/* environment is not setup correctly */
+			assert(false);
+			return NULL;
+		} else if(var[idx] == '\0') {
+			return NULL;
+		} else if(env[idx] != var[idx]) {
+			return NULL;
+		}
+		idx += 1;
+	}
+
+	if(var[idx] != '\0') {
+		return NULL;
+	}
+
+	return env + idx + 1;
+}
+/******************************************************************************
+*                            FUNCTION DEFINITIONS                             *
+******************************************************************************/
+const char *ghost_getenv(const char *var)
+{
+	for(size_t i = 0; ghost_envp[i] != NULL; i++) {
+		const char *val = env_cmp(ghost_envp[i], var);
+		if(val != NULL) {
+			return val;
+		}
+	}
+	return NULL;
+}
+/*****************************************************************************/
+void ghost_env_init(char **envp)
+{
+	ghost_envp = (const char *const *)envp;
+}
 /*****************************************************************************/
